@@ -164,6 +164,30 @@ body.has-save-bar .toast { bottom: 96px; }
   .no-print { display: none !important; }
 }
 
+/* Pickup QR (staff) */
+.pickup { display: flex; gap: 14px; align-items: center; margin: 8px 0; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; }
+.pickup img { width: 120px; height: 120px; background: #fff; border-radius: 6px; flex: none; }
+.pickup-code { font: 700 1.25rem/1.2 ui-monospace, Consolas, Menlo, monospace; letter-spacing: 2px; }
+
+/* Check-in desk */
+.checkin-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.checkin-form input { flex: 1; min-width: 240px; font-size: 1.1rem; padding: 12px 14px; }
+.camera-box { margin: 12px 0; max-width: 520px; }
+.camera-box video { width: 100%; border-radius: 8px; background: #000; display: block; margin-bottom: 8px; }
+.checkin-card { margin: 16px 0; padding: 20px; border-width: 2px; }
+.checkin-card.ok { border-color: var(--success); }
+.checkin-card.warn { border-color: var(--accent); }
+.checkin-card.stop { border-color: var(--danger); }
+.checkin-card h3 { font-size: 1.4rem; margin: 6px 0; }
+.checkin-card .items-big { font-size: 1.15rem; line-height: 1.6; margin: 10px 0; padding-left: 20px; }
+.checkin-card .banner { font-weight: 700; padding: 10px 12px; border-radius: 8px; margin: 10px 0; }
+.banner.ok { background: #dcfce7; color: #166534; }
+.banner.warn { background: #fef3c7; color: #92400e; }
+.banner.stop { background: #fee2e2; color: #991b1b; }
+.btn.big { font-size: 1.15rem; padding: 12px 22px; }
+.checkin-help { margin: 16px 0; line-height: 1.6; }
+.checkin-log { padding-left: 18px; line-height: 1.8; }
+
 /* Email preview */
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: grid; place-items: center; z-index: 40; padding: 16px; }
 .modal-box { width: min(680px, 100%); height: min(760px, 100%); display: flex; flex-direction: column; gap: 12px; }

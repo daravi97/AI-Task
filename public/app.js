@@ -11,6 +11,7 @@ const fmtDay = (d, opts = { weekday: 'short', day: 'numeric', month: 'short', ye
   return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
 };
 const ACTIVE = ['pending', 'processing', 'ready'];
+const fmtCode = (c) => (c ? `${c.slice(0, 4)}-${c.slice(4)}` : '');
 
 const state = { user: null, balance: 0, products: [], cart: loadCart(), chatHistory: [] };
 
@@ -96,14 +97,21 @@ $('#logout-btn').addEventListener('click', async () => {
 });
 
 // ---------- Routing ----------
-const VIEWS = { shop: renderShop, orders: renderOrders, wallet: renderWallet, admin: renderAdmin };
+const VIEWS = { shop: renderShop, orders: renderOrders, wallet: renderWallet, admin: renderAdmin, checkin: renderCheckin };
 
 function route() {
-  let view = location.hash.slice(1) || 'shop';
-  if (!VIEWS[view] || (view === 'admin' && state.user?.role !== 'admin')) view = 'shop';
+  // "#checkin/K7PX9M2Q" → view "checkin", arg "K7PX9M2Q"
+  let [view, arg] = (location.hash.slice(1) || 'shop').split('/');
+  const adminOnly = ['admin', 'checkin'];
+  if (adminOnly.includes(view) && state.user?.role !== 'admin') {
+    if (view === 'checkin') toast('That QR code is for the collection desk. Show it to the admin when you collect your order.');
+    view = view === 'checkin' ? 'orders' : 'shop';
+  }
+  if (!VIEWS[view]) view = 'shop';
+  if (view !== 'checkin') stopCamera();
   $$('.view').forEach((v) => v.classList.toggle('hidden', v.id !== `view-${view}`));
   $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
-  VIEWS[view]();
+  VIEWS[view](arg);
 }
 window.addEventListener('hashchange', () => { $$('.save-bar').forEach((b) => setBar(b.id, false)); if (state.user) route(); });
 
@@ -227,7 +235,13 @@ function collectionInfo(o) {
     return `<div class="collect tbc">📅 Collection date to be confirmed — you'll get an email once it's scheduled.</div>`;
   }
   const label = o.status === 'collected' ? 'Collected on' : 'Collect on';
-  return `<div class="collect">📅 <strong>${label} ${fmtDay(o.collection_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>,
+  const pickup = ACTIVE.includes(o.status) && o.pickup_code
+    ? `<div class="pickup"><img src="/api/orders/${o.id}/qr.svg" alt="Pickup QR code for order ${o.id}" loading="lazy" />
+        <div><div class="small muted">Show this at the collection desk</div>
+        <div class="pickup-code">${esc(fmtCode(o.pickup_code))}</div>
+        <div class="small muted">It's also in your confirmation and reminder emails.</div></div></div>`
+    : '';
+  return pickup + `<div class="collect">📅 <strong>${label} ${fmtDay(o.collection_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>,
     ${esc(o.collection_start)}–${esc(o.collection_end)}<br>📍 ${esc(o.collection_location)}${o.collection_notes ? ` <span class="muted">· ${esc(o.collection_notes)}</span>` : ''}</div>`;
 }
 
@@ -796,6 +810,182 @@ $('#test-email').addEventListener('click', async () => {
   } catch (err) { toast(err.message); }
 });
 $('#refresh-emails').addEventListener('click', renderEmails);
+
+// ---------- Collection desk check-in ----------
+let checkinOrder = null;
+const checkinLog = [];
+
+function renderCheckin(code) {
+  $('#checkin-result').innerHTML = '';
+  if (code) {
+    history.replaceState(null, '', '#checkin'); // so a refresh doesn't re-run the lookup
+    lookupCheckin(code);
+  }
+  setTimeout(() => $('#checkin-input').focus(), 0);
+}
+
+function beep(ok = true) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.frequency.value = ok ? 880 : 220;
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (ok ? 0.12 : 0.35));
+  } catch { /* no audio available */ }
+}
+
+function checkinCard(o, justCollected = false) {
+  const items = `<ul class="items-big">${o.items.map((i) => `<li><strong>${i.quantity} ×</strong> ${esc(i.product_name)}</li>`).join('')}</ul>`;
+  const day = o.collection_date ? `${fmtDay(o.collection_date)} · ${esc(o.collection_location)}` : 'No collection day set';
+  let kind; let banner; let action = '';
+  if (justCollected) {
+    kind = 'ok'; banner = '✓ Collected. Hand over the items below.';
+  } else if (o.status === 'cancelled') {
+    kind = 'stop'; banner = '✕ This order was cancelled and refunded. Do not hand anything over.';
+  } else if (o.status === 'collected') {
+    kind = 'stop'; banner = `✕ Already collected${o.collected_at ? ` on ${fmtDate(o.collected_at)}` : ''}. Do not hand it over again.`;
+  } else if (o.status === 'ready') {
+    kind = 'ok'; banner = 'Ready for collection';
+    action = `<button class="btn primary big" data-collect="${esc(o.pickup_code)}">✓ Hand over & mark collected</button>`;
+  } else {
+    kind = 'warn'; banner = `This order is still ${o.status}, not marked ready. Check it has been packed.`;
+    action = `<button class="btn big" data-collect="${esc(o.pickup_code)}">Mark collected anyway</button>`;
+  }
+  return `<div class="card checkin-card ${kind}">
+    <div class="row between"><span class="muted">Order #${o.id} · ${esc(fmtCode(o.pickup_code))}</span><span class="status ${o.status}">${o.status}</span></div>
+    <h3>${esc(o.user_name)}</h3>
+    <div class="muted">${esc(o.user_email)}${o.user_department ? ` · ${esc(o.user_department)}` : ''}</div>
+    <div class="banner ${kind}">${banner}</div>
+    ${items}
+    <div class="small muted">Collection: ${day}</div>
+    ${action ? `<div class="row" style="margin-top:14px">${action}<button class="btn ghost" data-checkin-clear>Next person</button></div>` : ''}
+  </div>`;
+}
+
+function logCheckin(o) {
+  checkinLog.unshift(o);
+  $('#checkin-log').innerHTML = checkinLog.slice(0, 20).map((x) =>
+    `<li>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · <strong>${esc(x.user_name)}</strong> · #${x.id} · ${x.items.map((i) => `${i.quantity}× ${esc(i.product_name)}`).join(', ')}</li>`).join('');
+}
+
+async function collectCheckin(code) {
+  try {
+    const o = await api(`/admin/checkin/${encodeURIComponent(code)}/collect`, { method: 'POST' });
+    checkinOrder = o;
+    $('#checkin-result').innerHTML = checkinCard(o, true);
+    logCheckin(o);
+    beep(true);
+  } catch (err) {
+    beep(false);
+    // Show the order again so the reason (already collected / cancelled) is visible.
+    await lookupCheckin(code, { quiet: true });
+    toast(err.message);
+  }
+  $('#checkin-input').value = '';
+  $('#checkin-input').focus();
+}
+
+async function lookupCheckin(input, { quiet = false } = {}) {
+  try {
+    const o = await api(`/admin/checkin/${encodeURIComponent(input.trim())}`);
+    checkinOrder = o;
+    if ($('#auto-collect').checked && ACTIVE.includes(o.status) && !quiet) return collectCheckin(o.pickup_code);
+    $('#checkin-result').innerHTML = checkinCard(o);
+    if (!quiet) beep(ACTIVE.includes(o.status));
+  } catch (err) {
+    checkinOrder = null;
+    $('#checkin-result').innerHTML = `<div class="card checkin-card stop"><div class="banner stop">✕ ${esc(err.message)}</div>
+      <p class="muted">Check the code, or find the person in Admin → Orders by name.</p></div>`;
+    if (!quiet) beep(false);
+  }
+  $('#checkin-input').value = '';
+  $('#checkin-input').focus();
+}
+
+$('#checkin-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = $('#checkin-input').value;
+  if (v.trim()) lookupCheckin(v);
+});
+$('#checkin-result').addEventListener('click', (e) => {
+  if (e.target.dataset.collect) collectCheckin(e.target.dataset.collect);
+  if ('checkinClear' in e.target.dataset) { $('#checkin-result').innerHTML = ''; $('#checkin-input').focus(); }
+});
+try { $('#auto-collect').checked = localStorage.getItem('autoCollect') === '1'; } catch { /* storage unavailable */ }
+$('#auto-collect').addEventListener('change', (e) => {
+  try { localStorage.setItem('autoCollect', e.target.checked ? '1' : '0'); } catch { /* ignore */ }
+  $('#checkin-input').focus();
+});
+
+// Camera scanning: the browser's built-in BarcodeDetector where available, otherwise jsQR.
+let cameraStream = null;
+let lastScan = { text: '', at: 0 };
+
+async function startCamera() {
+  if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) {
+    toast('The camera needs HTTPS (or localhost). Use a USB scanner, or your phone\'s camera app, instead.');
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  } catch (err) {
+    toast(`Could not open the camera: ${err.message}`);
+    return;
+  }
+  const video = $('#camera-video');
+  video.srcObject = cameraStream;
+  await video.play();
+  $('#camera-box').classList.remove('hidden');
+  $('#camera-btn').disabled = true;
+
+  let detect;
+  if ('BarcodeDetector' in window && (await BarcodeDetector.getSupportedFormats()).includes('qr_code')) {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    detect = async () => (await detector.detect(video))[0]?.rawValue;
+  } else {
+    if (!window.jsQR) {
+      await new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = '/vendor/jsQR.js'; sc.onload = resolve; sc.onerror = reject;
+        document.head.appendChild(sc);
+      });
+    }
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    detect = async () => {
+      if (!video.videoWidth) return null;
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      return window.jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height)?.data;
+    };
+  }
+
+  const loop = async () => {
+    if (!cameraStream) return;
+    try {
+      const text = await detect();
+      // Ignore the same code for a few seconds so one QR isn't processed repeatedly.
+      if (text && (text !== lastScan.text || Date.now() - lastScan.at > 4000)) {
+        lastScan = { text, at: Date.now() };
+        $('#camera-status').textContent = 'Code found ✓';
+        await lookupCheckin(text);
+        setTimeout(() => { if (cameraStream) $('#camera-status').textContent = 'Point the camera at the next QR code…'; }, 1500);
+      }
+    } catch { /* keep scanning */ }
+    setTimeout(loop, 200);
+  };
+  loop();
+}
+
+function stopCamera() {
+  if (cameraStream) cameraStream.getTracks().forEach((t) => t.stop());
+  cameraStream = null;
+  $('#camera-box').classList.add('hidden');
+  $('#camera-btn').disabled = false;
+}
+$('#camera-btn').addEventListener('click', startCamera);
+$('#camera-stop').addEventListener('click', stopCamera);
 
 // ---------- Assistant bot ----------
 function addChat(role, text) {

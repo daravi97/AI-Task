@@ -2,6 +2,7 @@
 const config = require('./config');
 const collection = require('./collection');
 const { queueOrderEmail } = require('./notifications');
+const { newPickupCode, parseCode } = require('./qr');
 
 class StoreError extends Error {
   constructor(message, status = 400) {
@@ -136,8 +137,8 @@ function placeOrder(db, userId, items, { note = null, today = config.today() } =
 
     const day = collection.nextDay(db, today);
     const orderId = db.prepare(
-      'INSERT INTO orders (user_id, total, note, collection_day_id, reminder_sent_at) VALUES (?, ?, ?, ?, ?)'
-    ).run(userId, total, note ? String(note).slice(0, 500) : null, day?.id ?? null, collection.reminderStamp(day, today))
+      'INSERT INTO orders (user_id, total, note, collection_day_id, reminder_sent_at, pickup_code) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(userId, total, note ? String(note).slice(0, 500) : null, day?.id ?? null, collection.reminderStamp(day, today), newPickupCode())
       .lastInsertRowid;
     const insertItem = db.prepare(
       'INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity) VALUES (?, ?, ?, ?, ?)'
@@ -205,17 +206,41 @@ function bulkUpdateStatus(db, orderIds, status, adminId) {
   if (ids.length === 0 || ids.some((n) => !Number.isInteger(n))) throw new StoreError('Select at least one order');
   return transaction(db, () => {
     const get = db.prepare('SELECT id, status FROM orders WHERE id = ?');
-    const update = db.prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?");
+    const update = db.prepare(
+      "UPDATE orders SET status = ?, collected_at = CASE WHEN ? = 'collected' THEN datetime('now') END, updated_at = datetime('now') WHERE id = ?"
+    );
     const result = { updated: [], skipped: [] };
     for (const id of ids) {
       const order = get.get(id);
       if (!order) result.skipped.push({ id, reason: 'not found' });
       else if (order.status === 'cancelled') result.skipped.push({ id, reason: 'cancelled' });
       else if (order.status === status) result.skipped.push({ id, reason: `already ${status}` });
-      else { update.run(status, id); result.updated.push(id); }
+      else { update.run(status, status, id); result.updated.push(id); }
     }
     return result;
   });
+}
+
+// ---------- Check-in at the collection desk ----------
+
+// Look up an order from a scanned QR code / typed pickup code.
+function findByPickupCode(db, input) {
+  const code = parseCode(input);
+  if (!code) throw new StoreError('That is not a valid pickup code (8 letters/numbers, e.g. K7PX-9M2Q)');
+  const row = db.prepare('SELECT id FROM orders WHERE pickup_code = ?').get(code);
+  if (!row) throw new StoreError('No order has this pickup code', 404);
+  return getOrder(db, row.id);
+}
+
+function collectByPickupCode(db, input) {
+  const order = findByPickupCode(db, input);
+  if (order.status === 'cancelled') throw new StoreError(`Order #${order.id} was cancelled — do not hand anything over`, 409);
+  if (order.status === 'collected') {
+    throw new StoreError(`Order #${order.id} was already collected${order.collected_at ? ` (${order.collected_at} UTC)` : ''}`, 409);
+  }
+  db.prepare("UPDATE orders SET status = 'collected', collected_at = datetime('now'), updated_at = datetime('now') WHERE id = ?")
+    .run(order.id);
+  return getOrder(db, order.id);
 }
 
 // Everything needed to prepare a collection day: totals per product to pull from storage,
@@ -269,7 +294,9 @@ function updateOrderStatus(db, orderId, status, adminId) {
   const order = getOrder(db, orderId);
   if (!order) throw new StoreError('Order not found', 404);
   if (order.status === 'cancelled') throw new StoreError('Cancelled orders cannot be reopened', 409);
-  db.prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, orderId);
+  db.prepare(
+    "UPDATE orders SET status = ?, collected_at = CASE WHEN ? = 'collected' THEN datetime('now') END, updated_at = datetime('now') WHERE id = ?"
+  ).run(status, status, orderId);
   return getOrder(db, orderId);
 }
 
@@ -313,6 +340,7 @@ module.exports = {
   getBalance, getLedger, awardTokens,
   listProducts, searchProducts, saveProduct,
   placeOrder, getOrder, listOrders, cancelOrder, updateOrderStatus, bulkUpdateStatus, pickList,
+  findByPickupCode, collectByPickupCode,
   listStaff,
   listFaqs, saveFaq, deleteFaq,
 };

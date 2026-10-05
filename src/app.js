@@ -6,6 +6,7 @@ const collection = require('./collection');
 const notifications = require('./notifications');
 const config = require('./config');
 const bulk = require('./bulk');
+const qr = require('./qr');
 
 const COOKIE = 'sid';
 const { version: VERSION } = require('../package.json');
@@ -15,6 +16,8 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
   const app = express();
   app.use(express.json({ limit: '2mb' })); // large enough for a bulk product CSV
   app.use(express.static(path.join(__dirname, '..', 'public')));
+  // QR decoder for the check-in camera scanner (served locally, no CDN needed).
+  app.get('/vendor/jsQR.js', (_req, res) => res.sendFile(require.resolve('jsqr/dist/jsQR.js')));
 
   // Attach the logged-in user (if any) to every request.
   app.use((req, _res, next) => {
@@ -71,6 +74,14 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
     const order = store.cancelOrder(db, id(req), { byUserId: req.user.id });
     email.kick();
     res.json({ order, balance: store.getBalance(db, req.user.id) });
+  });
+  // The staff member's own pickup QR code (shown under My Orders).
+  api.get('/orders/:id/qr.svg', requireUser, async (req, res) => {
+    const order = store.getOrder(db, id(req));
+    if (!order || (order.user_id !== req.user.id && req.user.role !== 'admin') || !order.pickup_code) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.type('image/svg+xml').set('Cache-Control', 'private, max-age=3600').send(await qr.svg(order.pickup_code));
   });
   api.get('/faqs', requireUser, (_req, res) => res.json(store.listFaqs(db)));
   api.post('/chat', requireUser, async (req, res) => {
@@ -149,11 +160,15 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
     mode: email.mode, reminderHour: config.settings.reminderHour, timezone: config.settings.timezone,
     emails: notifications.listEmails(db),
   }));
-  admin.get('/emails/:id', (req, res) => {
+  admin.get('/emails/:id', async (req, res) => {
     const e = notifications.getEmail(db, id(req));
     if (!e) return res.status(404).json({ error: 'Email not found' });
-    res.json(e);
+    res.json({ ...e, html: await notifications.previewHtml(db, e) });
   });
+
+  // Check-in at the collection desk: look up by scanned QR / typed pickup code, then collect.
+  admin.get('/checkin/:code', (req, res) => res.json(store.findByPickupCode(db, req.params.code)));
+  admin.post('/checkin/:code/collect', (req, res) => res.json(store.collectByPickupCode(db, req.params.code)));
   admin.post('/emails/:id/retry', (req, res) => {
     if (!notifications.retryEmail(db, id(req))) return res.status(409).json({ error: 'Only failed emails can be retried' });
     email.kick();

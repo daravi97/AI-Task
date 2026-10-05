@@ -3,6 +3,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { hashPassword } = require('./auth');
 const { today, addDays } = require('./config');
+const { newPickupCode } = require('./qr');
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -65,6 +66,8 @@ CREATE TABLE IF NOT EXISTS orders (
   note TEXT,
   collection_day_id INTEGER REFERENCES collection_days(id),
   reminder_sent_at TEXT,
+  pickup_code TEXT,                -- shown as a QR code; scanned at the collection desk
+  collected_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -154,6 +157,9 @@ const SEED_FAQS = [
   ['What if an item is out of stock?',
     'Out-of-stock items cannot be ordered. Admins restock regularly, so check back later.',
     'stock out available availability sold restock'],
+  ['What do I bring to collect my order?',
+    'Your pickup QR code. It is in your confirmation and reminder emails, and under My Orders in the store. Show it at the collection desk and it gets scanned. You can also just give your name.',
+    'qr code bring show scan pickup collect desk id'],
   ['Who do I contact for help?',
     'For anything the assistant cannot answer, contact the HR / People team or any store admin.',
     'help contact support human hr admin problem issue'],
@@ -178,6 +184,12 @@ function migrate(db) {
     db.exec('ALTER TABLE orders ADD COLUMN collection_day_id INTEGER REFERENCES collection_days(id)');
   }
   if (!cols.includes('reminder_sent_at')) db.exec('ALTER TABLE orders ADD COLUMN reminder_sent_at TEXT');
+  if (!cols.includes('pickup_code')) db.exec('ALTER TABLE orders ADD COLUMN pickup_code TEXT');
+  if (!cols.includes('collected_at')) db.exec('ALTER TABLE orders ADD COLUMN collected_at TEXT');
+  // Give orders placed before pickup codes existed a code of their own.
+  const setCode = db.prepare('UPDATE orders SET pickup_code = ? WHERE id = ?');
+  for (const { id } of db.prepare('SELECT id FROM orders WHERE pickup_code IS NULL').all()) setCode.run(newPickupCode(), id);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_pickup_code ON orders(pickup_code)');
 }
 
 function seedIfEmpty(db) {

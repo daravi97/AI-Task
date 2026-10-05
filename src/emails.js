@@ -1,5 +1,10 @@
 // Email templates. Each returns { subject, html, text } for an order notification.
 const { settings, formatDate } = require('./config');
+const { formatCode } = require('./qr');
+
+// The QR image is attached to the email (Content-ID) when it is sent — see notifications.js.
+// Email clients like Gmail and Outlook block images embedded as data: URLs.
+const QR_CID = 'pickup-qr';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -53,6 +58,20 @@ function collectionText(day) {
   return `When:  ${c.when}\nWhere: ${c.where}${c.notes ? `\nNote:  ${c.notes}` : ''}`;
 }
 
+function qrHtml(order) {
+  if (!order.pickup_code) return '';
+  return `<div style="text-align:center;border:1px dashed #c7cbe0;border-radius:8px;padding:16px;margin:16px 0">
+    <div style="font-weight:600;margin-bottom:8px">Show this at the collection desk</div>
+    <img src="cid:${QR_CID}" width="180" height="180" alt="Pickup QR code for order #${order.id}" style="display:block;margin:0 auto">
+    <div style="margin-top:8px;font-size:13px;color:#6b7385">Pickup code</div>
+    <div style="font-size:22px;font-weight:700;letter-spacing:3px;font-family:Consolas,Menlo,monospace">${esc(formatCode(order.pickup_code))}</div>
+  </div>`;
+}
+
+function qrText(order) {
+  return order.pickup_code ? `\n\nPickup code: ${formatCode(order.pickup_code)} (show the QR code in this email, or say this code, at the collection desk)` : '';
+}
+
 function layout({ title, bodyHtml }) {
   const ordersUrl = `${settings.appUrl}/#orders`;
   return `<!doctype html>
@@ -85,6 +104,7 @@ const templates = {
       bodyHtml: `<p>Your order <strong>#${order.id}</strong> has been placed and <strong>${order.total} tokens</strong> have been deducted from your wallet.</p>
         ${itemsHtml(order)}
         ${collectionBoxHtml(day, 'Please collect your items on')}
+        ${qrHtml(order)}
         <p style="color:#6b7385;font-size:14px">We'll send you a reminder the day before. Changed your mind? You can cancel from My Orders while the order is still pending and your tokens will be refunded.</p>`,
     });
     const text = `Hi ${firstName(order.user_name)},
@@ -93,7 +113,7 @@ Your order #${order.id} has been placed and ${order.total} tokens have been dedu
 
 ${itemsText(order)}
 
-${collectionText(day)}
+${collectionText(day)}${qrText(order)}
 
 We'll send you a reminder the day before.${footerText()}`;
     return { subject, html, text };
@@ -105,13 +125,14 @@ We'll send you a reminder the day before.${footerText()}`;
       title: `Hey ${firstName(order.user_name)}, your merch is waiting! 👋`,
       bodyHtml: `<p>Just a reminder that your order <strong>#${order.id}</strong> is ready for collection <strong>tomorrow</strong>. Come and pick it up at the designated location:</p>
         ${collectionBoxHtml(day, 'Collection')}
+        ${qrHtml(order)}
         ${itemsHtml(order)}`,
     });
     const text = `Hi ${firstName(order.user_name)},
 
 Just a reminder: your order #${order.id} is ready for collection TOMORROW. Come and pick it up at the designated location:
 
-${collectionText(day)}
+${collectionText(day)}${qrText(order)}
 
 ${itemsText(order)}${footerText()}`;
     return { subject, html, text };
@@ -125,13 +146,14 @@ ${itemsText(order)}${footerText()}`;
       title: 'Your collection details have been updated',
       bodyHtml: `<p>Hi ${esc(firstName(order.user_name))}, the collection details for your order <strong>#${order.id}</strong> have been set or changed.</p>
         ${collectionBoxHtml(day, 'New collection details')}
+        ${day ? qrHtml(order) : ''}
         ${itemsHtml(order)}`,
     });
     const text = `Hi ${firstName(order.user_name)},
 
 The collection details for your order #${order.id} have been set or changed.
 
-${collectionText(day)}
+${collectionText(day)}${day ? qrText(order) : ''}
 
 ${itemsText(order)}${footerText()}`;
     return { subject, html, text };
@@ -164,4 +186,4 @@ ${itemsText(order)}${footerText()}`;
   },
 };
 
-module.exports = { templates };
+module.exports = { templates, QR_CID };

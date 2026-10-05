@@ -1,6 +1,7 @@
 // Email delivery: SMTP transport, a durable outbox with retries, and the day-before reminder job.
 const nodemailer = require('nodemailer');
-const { templates } = require('./emails');
+const { templates, QR_CID } = require('./emails');
+const qr = require('./qr');
 const config = require('./config');
 
 const MAX_ATTEMPTS = 5;
@@ -87,6 +88,7 @@ async function processOutbox(db, mailer, { batchSize = 25, now = new Date() } = 
         subject: email.subject,
         html: email.html,
         text: email.text,
+        attachments: await qrAttachments(db, email),
       });
       db.prepare(
         "UPDATE email_outbox SET status = 'sent', attempts = attempts + 1, sent_at = datetime('now'), last_error = NULL WHERE id = ?"
@@ -104,6 +106,21 @@ async function processOutbox(db, mailer, { batchSize = 25, now = new Date() } = 
     }
   }
   return { attempted: due.length, sent };
+}
+
+// Emails that show a pickup QR code reference it as cid:pickup-qr; attach the image.
+async function qrAttachments(db, email) {
+  if (!email.order_id || !email.html.includes(`cid:${QR_CID}`)) return [];
+  const row = db.prepare('SELECT pickup_code FROM orders WHERE id = ?').get(email.order_id);
+  if (!row?.pickup_code) return [];
+  return [{ filename: 'pickup-qr.png', content: await qr.png(row.pickup_code), cid: QR_CID, contentType: 'image/png' }];
+}
+
+// For the admin preview: swap the cid: reference for an inline image the browser can show.
+async function previewHtml(db, email) {
+  const [attachment] = await qrAttachments(db, email);
+  if (!attachment) return email.html;
+  return email.html.replaceAll(`cid:${QR_CID}`, `data:image/png;base64,${attachment.content.toString('base64')}`);
 }
 
 function retryEmail(db, id) {
@@ -175,6 +192,6 @@ function startScheduler(db, mailer, { outboxEveryMs = 30_000, remindersEveryMs =
 }
 
 module.exports = {
-  createMailer, queueOrderEmail, queueTestEmail, processOutbox, retryEmail, listEmails, getEmail,
+  createMailer, queueOrderEmail, queueTestEmail, processOutbox, retryEmail, listEmails, getEmail, previewHtml,
   runReminders, startScheduler, ACTIVE_STATUSES,
 };

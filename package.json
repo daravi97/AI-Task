@@ -1,6 +1,6 @@
 {
   "name": "token-merch-store",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Company merchandise store where staff spend appreciation tokens, with a built-in FAQ assistant bot.",
   "main": "server.js",
   "type": "commonjs",
@@ -15,6 +15,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "express": "^5.2.1",
-    "nodemailer": "^10.0.14"
+    "jsqr": "^1.4.0",
+    "nodemailer": "^10.0.14",
+    "qrcode": "^1.5.4"
   }
 }

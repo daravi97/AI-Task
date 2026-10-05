@@ -18,6 +18,8 @@ A company merchandise store where staff spend **appreciation tokens** instead of
   3. **Ready**: select all, then *Mark ready*.
   4. **Collection day**: search a name, email or order number as people arrive and click *✓ Collected*.
 
+  **QR check-in:** every order gets its own pickup code (e.g. `K7PX-9M2Q`, hard to guess) and QR code. The QR is in the confirmation, reminder and collection-update emails (embedded as an inline image so Gmail and Outlook show it) and under *My Orders*. At the desk, the admin opens **Check-in** and either scans with a USB/Bluetooth barcode scanner, uses *Scan with camera* (webcam or phone; needs HTTPS or localhost), or points a phone's ordinary camera app at the QR, which opens the check-in page for that order. The screen shows who it is and what to hand over, with a big *Mark collected* button. Already-collected and cancelled orders show a clear red stop. There's an optional "mark collected straight away" mode for long queues, and a log of everyone checked in.
+
   Bulk actions skip orders that can't change (e.g. cancelled ones) and report how many were skipped. Selected orders can also be moved to another collection day in one go, and each person is emailed. Cancelling an order (refund plus restock) stays a deliberate one-at-a-time action.
 - **Products**: add or edit items, set price, stock and an emoji icon, and hide items
 - **Bulk upload**: download the CSV template, fill in many products in Excel, and upload it. You get a preview first (new, updated, unchanged and error rows), then everything is saved together, or nothing if any row has an error. A row whose name matches an existing product updates it, and blank cells are left unchanged, so a sheet with just `name,stock` restocks items. Column names are flexible (e.g. `qty`, `price (tokens)`), and both comma- and semicolon-separated files work. The limit is 1,000 rows per upload.
@@ -91,6 +93,7 @@ src/store.js       business logic: wallet, catalog, orders, FAQs
 src/bot.js         Merch Bot: Claude tool loop + offline FAQ fallback
 src/collection.js  collection days and booking orders onto them
 src/bulk.js        CSV parsing, bulk product import (preview + apply), bulk stock updates
+src/qr.js          pickup codes and QR code images (check-in links)
 src/notifications.js  SMTP transport, email outbox worker, day-before reminder job
 src/emails.js      email templates (HTML + plain text)
 src/config.js      settings and timezone-aware date helpers
@@ -113,7 +116,7 @@ test/              node:test suites
 | `SMTP_USER` / `SMTP_PASS` | *(empty)*    | SMTP login, if your server needs one      |
 | `MAIL_FROM`         | `Merch Store <no-reply@localhost>` | Sender shown on emails    |
 | `COMPANY_NAME`      | `Company`          | Shown in email headers                    |
-| `APP_URL`           | `http://localhost:PORT` | Base URL for "View my orders" links in emails |
+| `APP_URL`           | `http://localhost:PORT` | Base URL for links in emails **and inside the pickup QR codes**. Set it to the address staff and admin phones use, e.g. `https://merch.yourcompany.com` |
 | `APP_TIMEZONE`      | server timezone    | Timezone for collection dates and reminders (e.g. `Asia/Kuala_Lumpur`) |
 | `REMINDER_HOUR`     | `9`                | Local hour (0–23) the day-before reminders start going out |
 
