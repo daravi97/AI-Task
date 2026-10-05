@@ -107,7 +107,7 @@ test('offline assistant answers from user data and FAQs', () => {
   assert.match(keywordAnswer(db, alice, 'where are my orders'), /haven't placed/);
   assert.match(keywordAnswer(db, alice, 'Do tokens expire?'), /stay in your wallet/);
   assert.match(keywordAnswer(db, alice, 'how can I cancel?'), /Pending/);
-  assert.match(keywordAnswer(db, alice, 'how do I collect my order?'), /reception/);
+  assert.match(keywordAnswer(db, alice, 'how do I collect my order?'), /next scheduled collection day/);
   assert.match(keywordAnswer(db, alice, 'where is my order?'), /haven't placed/);
   assert.match(keywordAnswer(db, alice, 'hoodie'), /Company Hoodie/);
 });

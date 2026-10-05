@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { hashPassword } = require('./auth');
+const { today, addDays } = require('./config');
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -44,6 +45,17 @@ CREATE TABLE IF NOT EXISTS products (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Days when staff can pick up their orders, scheduled by admins in the portal.
+CREATE TABLE IF NOT EXISTS collection_days (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,              -- YYYY-MM-DD in the company timezone
+  start_time TEXT NOT NULL,        -- HH:MM
+  end_time TEXT NOT NULL,          -- HH:MM
+  location TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id),
@@ -51,6 +63,8 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'processing', 'ready', 'collected', 'cancelled')),
   note TEXT,
+  collection_day_id INTEGER REFERENCES collection_days(id),
+  reminder_sent_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -71,8 +85,29 @@ CREATE TABLE IF NOT EXISTS faqs (
   keywords TEXT NOT NULL DEFAULT ''
 );
 
+-- Emails are queued here (in the same transaction as the change that caused them)
+-- and delivered by a background worker, so checkout never waits on the SMTP server.
+CREATE TABLE IF NOT EXISTS email_outbox (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  to_email TEXT NOT NULL,
+  to_name TEXT,
+  subject TEXT NOT NULL,
+  html TEXT NOT NULL,
+  text TEXT NOT NULL,
+  order_id INTEGER REFERENCES orders(id),
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  next_attempt_at TEXT NOT NULL,   -- ISO timestamp
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  sent_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_ledger_user ON token_ledger(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_collection_days_date ON collection_days(date);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON email_outbox(status, next_attempt_at);
 `;
 
 const SEED_PRODUCTS = [
@@ -102,8 +137,11 @@ const SEED_FAQS = [
     'Browse the Shop, add items to your cart, then press Checkout. The total is deducted from your token balance immediately and your order appears under My Orders.',
     'buy purchase order checkout cart how'],
   ['How do I collect my order?',
-    'Orders go through Pending → Processing → Ready. When your order is Ready, collect it from the office reception / HR desk. The status changes to Collected once picked up.',
-    'collect pickup pick up delivery deliver shipping ship receive where when'],
+    'Each order is booked onto the next scheduled collection day. Your confirmation email (and My Orders) shows the date, time and location, and you get a reminder email the day before. Just turn up in the time window and the status changes to Collected once picked up.',
+    'collect pickup pick up delivery deliver shipping ship receive where when date day location'],
+  ['When is the next collection day?',
+    'Collection days are scheduled by the admin team. Your order shows its collection date under My Orders. If it says "to be confirmed", you will get an email as soon as a date is set.',
+    'next collection day date schedule when email reminder'],
   ['Can I cancel an order?',
     'Yes, while the order is still Pending you can cancel it from My Orders and the tokens are refunded to your wallet straight away. After that, contact an admin.',
     'cancel cancellation refund return undo'],
@@ -128,8 +166,18 @@ function openDb(dbPath) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   seedIfEmpty(db);
   return db;
+}
+
+// Add columns introduced after the first release to databases created before them.
+function migrate(db) {
+  const cols = db.prepare('PRAGMA table_info(orders)').all().map((c) => c.name);
+  if (!cols.includes('collection_day_id')) {
+    db.exec('ALTER TABLE orders ADD COLUMN collection_day_id INTEGER REFERENCES collection_days(id)');
+  }
+  if (!cols.includes('reminder_sent_at')) db.exec('ALTER TABLE orders ADD COLUMN reminder_sent_at TEXT');
 }
 
 function seedIfEmpty(db) {
@@ -158,6 +206,9 @@ function seedIfEmpty(db) {
 
   const insertFaq = db.prepare('INSERT INTO faqs (question, answer, keywords) VALUES (?, ?, ?)');
   for (const f of SEED_FAQS) insertFaq.run(...f);
+
+  db.prepare('INSERT INTO collection_days (date, start_time, end_time, location, notes) VALUES (?, ?, ?, ?, ?)')
+    .run(addDays(today(), 3), '10:00', '16:00', 'Level 3 Reception (HR desk)', 'Bring your staff ID.');
 }
 
 module.exports = { openDb, DEMO_PASSWORD };

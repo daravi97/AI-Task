@@ -1,4 +1,7 @@
 // Business logic for wallets, catalog, orders and FAQs. All functions take the db handle first.
+const config = require('./config');
+const collection = require('./collection');
+const { queueOrderEmail } = require('./notifications');
 
 class StoreError extends Error {
   constructor(message, status = 400) {
@@ -104,7 +107,7 @@ function saveProduct(db, data, id = null) {
 
 // ---------- Orders ----------
 
-function placeOrder(db, userId, items, note = null) {
+function placeOrder(db, userId, items, { note = null, today = config.today() } = {}) {
   if (!Array.isArray(items) || items.length === 0) throw new StoreError('Your cart is empty');
 
   // Merge duplicate lines so stock checks see the true quantity per product.
@@ -131,8 +134,11 @@ function placeOrder(db, userId, items, note = null) {
       throw new StoreError(`Not enough tokens: this order costs ${total} but your balance is ${balance}`, 402);
     }
 
-    const orderId = db.prepare('INSERT INTO orders (user_id, total, note) VALUES (?, ?, ?)')
-      .run(userId, total, note ? String(note).slice(0, 500) : null).lastInsertRowid;
+    const day = collection.nextDay(db, today);
+    const orderId = db.prepare(
+      'INSERT INTO orders (user_id, total, note, collection_day_id, reminder_sent_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(userId, total, note ? String(note).slice(0, 500) : null, day?.id ?? null, collection.reminderStamp(day, today))
+      .lastInsertRowid;
     const insertItem = db.prepare(
       'INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity) VALUES (?, ?, ?, ?, ?)'
     );
@@ -144,6 +150,7 @@ function placeOrder(db, userId, items, note = null) {
     db.prepare(
       "INSERT INTO token_ledger (user_id, amount, type, reason, order_id) VALUES (?, ?, 'purchase', ?, ?)"
     ).run(userId, -total, `Order #${orderId}`, orderId);
+    queueOrderEmail(db, orderId, 'order_confirmation');
 
     return getOrder(db, orderId);
   });
@@ -151,7 +158,12 @@ function placeOrder(db, userId, items, note = null) {
 
 function getOrder(db, orderId) {
   const order = db.prepare(
-    'SELECT o.*, u.name AS user_name, u.email AS user_email FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ?'
+    `SELECT o.*, u.name AS user_name, u.email AS user_email,
+            d.date AS collection_date, d.start_time AS collection_start, d.end_time AS collection_end,
+            d.location AS collection_location, d.notes AS collection_notes
+       FROM orders o JOIN users u ON u.id = o.user_id
+       LEFT JOIN collection_days d ON d.id = o.collection_day_id
+      WHERE o.id = ?`
   ).get(orderId);
   if (!order) return null;
   order.items = db.prepare(
@@ -186,6 +198,7 @@ function cancelOrder(db, orderId, { byUserId = null, isAdmin = false } = {}) {
       "INSERT INTO token_ledger (user_id, amount, type, reason, order_id, created_by) VALUES (?, ?, 'refund', ?, ?, ?)"
     ).run(order.user_id, order.total, `Refund for cancelled order #${orderId}`, orderId, byUserId);
     db.prepare("UPDATE orders SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?").run(orderId);
+    queueOrderEmail(db, orderId, 'order_cancelled');
     return getOrder(db, orderId);
   });
 }

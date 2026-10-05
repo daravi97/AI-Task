@@ -5,6 +5,13 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtDate = (s) => new Date(s.replace(' ', 'T') + (s.includes('Z') ? '' : 'Z')).toLocaleString();
 
+// "2026-10-09" → "Fri, 9 Oct 2026" (collection dates are calendar dates, not instants)
+const fmtDay = (d, opts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) => {
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
+};
+const ACTIVE = ['pending', 'processing', 'ready'];
+
 const state = { user: null, balance: 0, products: [], cart: loadCart(), chatHistory: [] };
 
 // ---------- API ----------
@@ -214,11 +221,30 @@ $('#checkout-btn').addEventListener('click', async () => {
 });
 
 // ---------- Orders ----------
+function collectionInfo(o) {
+  if (!ACTIVE.includes(o.status) && o.status !== 'collected') return '';
+  if (!o.collection_date) {
+    return `<div class="collect tbc">📅 Collection date to be confirmed — you'll get an email once it's scheduled.</div>`;
+  }
+  const label = o.status === 'collected' ? 'Collected on' : 'Collect on';
+  return `<div class="collect">📅 <strong>${label} ${fmtDay(o.collection_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>,
+    ${esc(o.collection_start)}–${esc(o.collection_end)}<br>📍 ${esc(o.collection_location)}${o.collection_notes ? ` <span class="muted">· ${esc(o.collection_notes)}</span>` : ''}</div>`;
+}
+
+let collectionDays = [];
+
 function orderCard(o, { admin = false } = {}) {
+  const daySelect = admin && ACTIVE.includes(o.status)
+    ? `<label class="inline">Collection
+         <select data-day="${o.id}">
+           <option value="">To be confirmed</option>
+           ${collectionDays.map((d) => `<option value="${d.id}" ${d.id === o.collection_day_id ? 'selected' : ''}>${fmtDay(d.date)} · ${esc(d.location)}</option>`).join('')}
+         </select></label>`
+    : '';
   const actions = admin
-    ? `<select data-status="${o.id}" ${o.status === 'cancelled' ? 'disabled' : ''}>
+    ? `<span class="row">${daySelect}<label class="inline">Status <select data-status="${o.id}" ${o.status === 'cancelled' ? 'disabled' : ''}>
          ${['pending', 'processing', 'ready', 'collected', 'cancelled'].map((s) => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}
-       </select>`
+       </select></label></span>`
     : (o.status === 'pending' ? `<button class="btn danger sm" data-cancel="${o.id}">Cancel & refund</button>` : '');
   return `<div class="card order">
     <div class="order-head">
@@ -227,6 +253,7 @@ function orderCard(o, { admin = false } = {}) {
     </div>
     <div class="small muted">${fmtDate(o.created_at)}</div>
     <ul>${o.items.map((i) => `<li>${i.quantity} × ${esc(i.product_name)} <span class="muted">(🪙 ${i.unit_price} each)</span></li>`).join('')}</ul>
+    ${collectionInfo(o)}
     <div class="row between"><strong>🪙 ${o.total}</strong>${actions}</div>
   </div>`;
 }
@@ -267,7 +294,10 @@ $$('.tab').forEach((t) => t.addEventListener('click', () => { adminTab = t.datas
 function renderAdmin() {
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === adminTab));
   $$('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.id !== `tab-${adminTab}`));
-  ({ award: renderAward, aorders: renderAdminOrders, aproducts: renderAdminProducts, afaqs: renderAdminFaqs })[adminTab]();
+  ({
+    award: renderAward, aorders: renderAdminOrders, adays: renderCollectionDays,
+    aemails: renderEmails, aproducts: renderAdminProducts, afaqs: renderAdminFaqs,
+  })[adminTab]();
 }
 
 async function renderAward() {
@@ -291,13 +321,27 @@ $('#award-form').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message); }
 });
 
+async function loadCollectionDays() {
+  const r = await api('/admin/collection-days');
+  collectionDays = r.days.filter((d) => d.date >= r.today);
+  return r;
+}
+
 async function renderAdminOrders() {
   const status = $('#order-filter').value;
-  const orders = await api(`/admin/orders${status ? `?status=${status}` : ''}`);
+  const [orders] = await Promise.all([api(`/admin/orders${status ? `?status=${status}` : ''}`), loadCollectionDays()]);
   $('#admin-orders').innerHTML = orders.length ? orders.map((o) => orderCard(o, { admin: true })).join('') : '<p class="muted">No orders.</p>';
 }
 $('#order-filter').addEventListener('change', renderAdminOrders);
 $('#admin-orders').addEventListener('change', async (e) => {
+  const dayOrder = e.target.dataset.day;
+  if (dayOrder) {
+    try {
+      await api(`/admin/orders/${dayOrder}/collection-day`, { method: 'PUT', body: { collectionDayId: e.target.value || null } });
+      toast(`Order #${dayOrder} rescheduled — staff member emailed`);
+    } catch (err) { toast(err.message); }
+    return renderAdminOrders();
+  }
   const id = e.target.dataset.status;
   if (!id) return;
   const status = e.target.value;
@@ -389,6 +433,104 @@ $('#faq-form').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message); }
 });
 $('#faq-form').addEventListener('reset', (e) => { e.target.elements.id.value = ''; });
+
+// Collection days
+let allDays = [];
+async function renderCollectionDays() {
+  const r = await loadCollectionDays();
+  allDays = r.days;
+  $('#day-form').elements.date.min = r.today;
+  $('#days-tz').textContent = r.timezone;
+  $('#days-table').innerHTML = r.days.length ? r.days.map((d) => {
+    const past = d.date < r.today;
+    return `<tr class="${past ? 'muted' : ''}">
+      <td><strong>${fmtDay(d.date)}</strong>${d.date === r.today ? ' <span class="tag">Today</span>' : ''}${past ? ' <span class="tag">Past</span>' : ''}</td>
+      <td>${esc(d.start_time)}–${esc(d.end_time)}</td>
+      <td>${esc(d.location)}${d.notes ? `<div class="small muted">${esc(d.notes)}</div>` : ''}</td>
+      <td class="num">${d.active_orders}</td>
+      <td class="num">${d.collected_orders}</td>
+      <td>${past ? '' : `<span class="row"><button class="btn sm" data-dedit="${d.id}">Edit</button><button class="btn sm danger" data-ddel="${d.id}">Delete</button></span>`}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="muted">No collection days yet. Orders will show "to be confirmed" until you add one.</td></tr>';
+}
+$('#days-table').addEventListener('click', async (e) => {
+  const edit = allDays.find((d) => d.id === Number(e.target.dataset.dedit));
+  if (edit) {
+    const form = $('#day-form');
+    for (const k of ['id', 'date', 'start_time', 'end_time', 'location', 'notes']) form.elements[k].value = edit[k];
+    $('#day-submit').textContent = 'Save changes';
+    form.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  const del = e.target.dataset.ddel;
+  if (del && confirm('Delete this collection day?')) {
+    try { await api(`/admin/collection-days/${del}`, { method: 'DELETE' }); toast('Collection day deleted'); } catch (err) { toast(err.message); }
+    renderCollectionDays();
+  }
+});
+$('#day-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const f = Object.fromEntries(new FormData(form));
+  const id = f.id;
+  if (id && allDays.find((d) => d.id === Number(id))?.active_orders
+      && !confirm('Staff with orders on this day will be emailed about the change. Continue?')) return;
+  try {
+    const r = await api(id ? `/admin/collection-days/${id}` : '/admin/collection-days', { method: id ? 'PUT' : 'POST', body: f });
+    const n = r.assignedOrders ?? r.notifiedOrders ?? 0;
+    toast(id ? `Saved${n ? ` — ${n} staff emailed` : ''}` : `Collection day added${n ? ` — ${n} waiting order(s) booked and emailed` : ''}`);
+    form.reset();
+    form.elements.id.value = '';
+    $('#day-submit').textContent = 'Add collection day';
+    renderCollectionDays();
+  } catch (err) { toast(err.message); }
+});
+$('#day-form').addEventListener('reset', (e) => { e.target.elements.id.value = ''; $('#day-submit').textContent = 'Add collection day'; });
+
+// Email log
+const KIND_LABELS = {
+  order_confirmation: 'Order confirmation', collection_reminder: 'Collection reminder',
+  collection_updated: 'Collection update', order_cancelled: 'Cancellation', test: 'Test',
+};
+async function renderEmails() {
+  const r = await api('/admin/emails');
+  $('#email-mode').innerHTML = r.mode === 'smtp'
+    ? `✅ Sending through your SMTP server. Reminders go out from <strong>${r.reminderHour}:00</strong> (${esc(r.timezone)}) the day before collection.`
+    : `⚠️ <strong>SMTP is not configured</strong> — emails are recorded here but not delivered. Set <code>SMTP_HOST</code> (and related settings) to send real email. Reminders go out from ${r.reminderHour}:00 (${esc(r.timezone)}) the day before collection.`;
+  $('#email-mode').className = `card notice ${r.mode === 'smtp' ? 'ok' : 'warn'}`;
+  $('#emails-table').innerHTML = r.emails.length ? r.emails.map((m) => `<tr>
+    <td class="small">${fmtDate(m.created_at)}</td>
+    <td>${esc(m.to_name || '')}<div class="small muted">${esc(m.to_email)}</div></td>
+    <td><span class="tag">${esc(KIND_LABELS[m.kind] || m.kind)}</span><div>${esc(m.subject)}</div></td>
+    <td><span class="status ${m.status === 'sent' ? 'ready' : m.status === 'failed' ? 'cancelled' : 'pending'}">${m.status}</span>
+      ${m.last_error ? `<div class="small negative">${esc(m.last_error)}</div>` : ''}</td>
+    <td><span class="row"><button class="btn sm" data-preview="${m.id}">Preview</button>
+      ${m.status === 'failed' ? `<button class="btn sm" data-retry="${m.id}">Retry</button>` : ''}</span></td>
+  </tr>`).join('') : '<tr><td colspan="5" class="muted">No emails yet.</td></tr>';
+}
+$('#emails-table').addEventListener('click', async (e) => {
+  const { preview, retry } = e.target.dataset;
+  try {
+    if (preview) {
+      const m = await api(`/admin/emails/${preview}`);
+      $('#preview-subject').textContent = m.subject;
+      $('#preview-to').textContent = `To: ${m.to_name ? `${m.to_name} <${m.to_email}>` : m.to_email}`;
+      $('#preview-frame').srcdoc = m.html;
+      $('#email-preview').classList.remove('hidden');
+    }
+    if (retry) { await api(`/admin/emails/${retry}/retry`, { method: 'POST' }); toast('Queued for retry'); setTimeout(renderEmails, 800); }
+  } catch (err) { toast(err.message); }
+});
+$('#preview-close').addEventListener('click', () => $('#email-preview').classList.add('hidden'));
+$('#email-preview').addEventListener('click', (e) => { if (e.target.id === 'email-preview') e.target.classList.add('hidden'); });
+$('#test-email').addEventListener('click', async () => {
+  try {
+    const r = await api('/admin/emails/test', { method: 'POST' });
+    toast(`Test email queued to ${r.to}`);
+    setTimeout(renderEmails, 800);
+  } catch (err) { toast(err.message); }
+});
+$('#refresh-emails').addEventListener('click', renderEmails);
 
 // ---------- Assistant bot ----------
 function addChat(role, text) {

@@ -2,6 +2,7 @@
 // otherwise falls back to keyword matching against the FAQ table so the app works offline.
 const Anthropic = require('@anthropic-ai/sdk');
 const store = require('./store');
+const { formatDate } = require('./config');
 
 const MODEL = process.env.ASSISTANT_MODEL || 'claude-opus-5-5';
 const MAX_TOOL_ROUNDS = 5;
@@ -17,7 +18,7 @@ const TOOLS = [
   },
   {
     name: 'get_my_orders',
-    description: "List the current user's orders with status (pending, processing, ready, collected, cancelled), items and token totals.",
+    description: "List the current user's orders with status (pending, processing, ready, collected, cancelled), items, token totals and collection date/time/location.",
     strict: true,
     input_schema: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
@@ -40,7 +41,8 @@ function systemPrompt(faqs) {
 Staff receive appreciation tokens for good work and spend them in this store on company merchandise.
 
 Answer questions about the store, tokens, orders and products. Use the FAQ below as the source of truth for policy.
-Use the tools to look up the user's own balance, orders, or the live catalog instead of guessing. You can only read data:
+Use the tools to look up the user's own balance, orders (including their collection date, time and location), or the live catalog instead of guessing.
+Staff receive an order confirmation email with their collection details and a reminder email the day before collection. You can only read data:
 you cannot place, change or cancel orders, or award tokens — tell the user where to do that in the app
 (Shop → Cart → Checkout; My Orders → Cancel for pending orders; admins award tokens).
 If a question is not covered by the FAQ or tools, say you are not sure and suggest contacting the HR / People team.
@@ -58,6 +60,9 @@ function runTool(db, user, name, input) {
       return store.listOrders(db, { userId: user.id }).slice(0, 20).map((o) => ({
         id: o.id, status: o.status, total_tokens: o.total, placed_at: o.created_at,
         items: o.items.map((i) => `${i.quantity} × ${i.product_name}`),
+        collection: o.collection_date
+          ? { date: formatDate(o.collection_date), time: `${o.collection_start}–${o.collection_end}`, location: o.collection_location, notes: o.collection_notes }
+          : 'to be confirmed (the user will be emailed when a collection day is scheduled)',
       }));
     case 'search_products':
       return store.searchProducts(db, input?.query ?? '');
@@ -145,6 +150,16 @@ function keywordAnswer(db, user, message) {
     if (orders.length === 0) return "You haven't placed any orders yet. Head to the Shop to pick something!";
     const lines = orders.slice(0, 5).map((o) => `• Order #${o.id}: ${o.status} (${o.total} tokens)`);
     return `Here are your latest orders:\n${lines.join('\n')}`;
+  }
+
+  if (has('collect', 'collection', 'pickup', 'pick')) {
+    const active = store.listOrders(db, { userId: user.id }).filter((o) => ['pending', 'processing', 'ready'].includes(o.status));
+    if (active.length) {
+      const lines = active.slice(0, 5).map((o) => (o.collection_date
+        ? `• Order #${o.id}: ${formatDate(o.collection_date)}, ${o.collection_start}–${o.collection_end} at ${o.collection_location}`
+        : `• Order #${o.id}: collection date to be confirmed — you'll get an email once it's scheduled`));
+      return `Here's when and where to collect your orders:\n${lines.join('\n')}\nYou'll also get a reminder email the day before.`;
+    }
   }
 
   let best = null;
