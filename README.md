@@ -47,6 +47,8 @@ cp .env.example .env      # optionally add ANTHROPIC_API_KEY
 npm start                 # opens http://localhost:3000 in your browser
 ```
 
+**On Windows,** you can double-click **`start.bat`** instead. It installs or updates the packages and starts the app. If PowerShell says *"npm.ps1 cannot be loaded… not digitally signed"*, either use `start.bat`, type `npm.cmd install` and `npm.cmd start` instead of `npm …`, or allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. After every `git pull`, run `npm install` (or `start.bat`) again in case new packages were added.
+
 `npm start` opens the site in your default browser (set `OPEN_BROWSER=false` in `.env` to stop that). If port 3000 is busy it uses the next free port and prints the address. Press `Ctrl+C` to stop the server.
 
 On first run the database is created at `./data/store.db` and seeded with demo data:

@@ -580,4 +580,8 @@ $('#chat-form').addEventListener('submit', (e) => {
 });
 $('#chat-suggestions').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') sendChat(e.target.textContent); });
 
+fetch('/api/version').then((r) => r.json()).then(({ version }) => {
+  $$('.version').forEach((el) => { el.textContent = `v${version}`; });
+}).catch(() => {});
+
 boot();

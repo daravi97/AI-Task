@@ -7,6 +7,7 @@ const notifications = require('./notifications');
 const config = require('./config');
 
 const COOKIE = 'sid';
+const { version: VERSION } = require('../package.json');
 
 // `email` is { mode: 'smtp' | 'log', kick() }: kick() asks the outbox worker to send queued emails now.
 function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
@@ -47,6 +48,9 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
     res.clearCookie(COOKIE);
     res.json({ ok: true });
   });
+
+  // Public: lets the UI (and a second `npm start`) tell which version is running.
+  api.get('/version', (_req, res) => res.json({ app: 'token-merch-store', version: VERSION }));
 
   api.get('/me', requireUser, (req, res) => {
     res.json({ user: req.user, balance: store.getBalance(db, req.user.id), assistantMode: assistant.mode });

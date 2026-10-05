@@ -64,6 +64,8 @@ label.checkbox input { width: auto; }
 /* Topbar */
 .topbar { display: flex; align-items: center; gap: 20px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
 .brand { font-weight: 700; font-size: 1.1rem; }
+.version { font-size: 0.7rem; font-weight: 500; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
+.version:empty { display: none; }
 #nav { display: flex; gap: 4px; flex-wrap: wrap; }
 #nav a { padding: 6px 12px; border-radius: 8px; color: var(--text); text-decoration: none; }
 #nav a.active { background: var(--bg); color: var(--primary); font-weight: 600; }

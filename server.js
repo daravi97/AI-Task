@@ -44,6 +44,27 @@ function openBrowser(url) {
   } catch { /* ignore */ }
 }
 
+// When the port is taken, check whether it's another copy of this app (a common mix-up:
+// an old `npm start` left running in another terminal keeps serving the old version).
+async function explainBusyPort(port) {
+  const get = (path) => fetch(`http://localhost:${port}${path}`, { signal: AbortSignal.timeout(1500) });
+  let other = null;
+  try {
+    const v = await get('/api/version');
+    if (v.ok) other = (await v.json()).version;
+    else if ((await get('/api/me')).status === 401) other = 'an older version';
+  } catch { /* not reachable or not HTTP */ }
+  const line = '  ' + '!'.repeat(76);
+  if (other) {
+    const running = other === 'an older version' ? 'an OLDER version' : `version ${other}`;
+    console.log(`\n${line}\n  Another copy of the Merch Store (${running}) is already running on port ${port}.`);
+    console.log(`  This is version ${require('./package.json').version}. Close the other terminal window (or press Ctrl+C`);
+    console.log(`  in it) so you don't end up looking at the old site, then run npm start again.\n${line}\n`);
+  } else {
+    console.log(`Port ${port} is already in use by another program.`);
+  }
+}
+
 // Listen on the requested port; if it's taken (and PORT wasn't set explicitly), try the next few.
 function listen(port, attemptsLeft = 10) {
   const server = app.listen(port);
@@ -60,15 +81,15 @@ function listen(port, attemptsLeft = 10) {
     if (mailer.verify) mailer.verify().catch((err) => console.error(`[email] SMTP connection check failed: ${err.message}`));
     openBrowser(url);
   });
-  server.once('error', (err) => {
-    if (err.code === 'EADDRINUSE' && !process.env.PORT && attemptsLeft > 0) {
-      console.log(`Port ${port} is already in use, trying ${port + 1}...`);
+  server.once('error', async (err) => {
+    if (err.code !== 'EADDRINUSE') throw err;
+    await explainBusyPort(port);
+    if (!process.env.PORT && attemptsLeft > 0) {
+      console.log(`Trying port ${port + 1}...`);
       listen(port + 1, attemptsLeft - 1);
-    } else if (err.code === 'EADDRINUSE') {
+    } else {
       console.error(`Port ${port} is already in use. Stop the other program using it, or set a different PORT in .env.`);
       process.exit(1);
-    } else {
-      throw err;
     }
   });
 }
