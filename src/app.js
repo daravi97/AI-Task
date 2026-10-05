@@ -5,6 +5,7 @@ const store = require('./store');
 const collection = require('./collection');
 const notifications = require('./notifications');
 const config = require('./config');
+const bulk = require('./bulk');
 
 const COOKIE = 'sid';
 const { version: VERSION } = require('../package.json');
@@ -12,7 +13,7 @@ const { version: VERSION } = require('../package.json');
 // `email` is { mode: 'smtp' | 'log', kick() }: kick() asks the outbox worker to send queued emails now.
 function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
   const app = express();
-  app.use(express.json({ limit: '100kb' }));
+  app.use(express.json({ limit: '2mb' })); // large enough for a bulk product CSV
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
   // Attach the logged-in user (if any) to every request.
@@ -88,6 +89,14 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
   admin.get('/products', (_req, res) => res.json(store.listProducts(db, { includeInactive: true })));
   admin.post('/products', (req, res) => res.status(201).json(store.saveProduct(db, req.body ?? {})));
   admin.put('/products/:id', (req, res) => res.json(store.saveProduct(db, req.body ?? {}, id(req))));
+  // Bulk: CSV template, CSV import (dryRun = preview only), and set many stock levels at once.
+  admin.get('/products-template.csv', (_req, res) => {
+    res.attachment('products-template.csv').type('text/csv; charset=utf-8').send('\uFEFF' + bulk.TEMPLATE_CSV);
+  });
+  admin.post('/products-import', (req, res) => {
+    res.json(bulk.importProducts(db, req.body?.csv, { dryRun: req.body?.dryRun !== false }));
+  });
+  admin.put('/products-stock', (req, res) => res.json(bulk.setStockLevels(db, req.body?.updates)));
   admin.get('/orders', (req, res) => res.json(store.listOrders(db, { status: req.query.status || null })));
   admin.put('/orders/:id/status', (req, res) => {
     res.json(store.updateOrderStatus(db, id(req), req.body?.status, req.user.id));
@@ -147,8 +156,9 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err instanceof store.StoreError || err instanceof collection.CollectionError) return res.status(err.status).json({ error: err.message });
+    if (err instanceof store.StoreError || err instanceof collection.CollectionError || err instanceof bulk.BulkError) return res.status(err.status).json({ error: err.message });
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'That file is too large (max 2 MB)' });
     console.error(err);
     res.status(500).json({ error: 'Something went wrong' });
   });

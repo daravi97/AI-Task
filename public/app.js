@@ -105,7 +105,7 @@ function route() {
   $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
   VIEWS[view]();
 }
-window.addEventListener('hashchange', () => state.user && route());
+window.addEventListener('hashchange', () => { showSaveBar(false); if (state.user) route(); });
 
 // ---------- Shop ----------
 async function loadProducts() {
@@ -292,6 +292,7 @@ let adminTab = 'award';
 $$('.tab').forEach((t) => t.addEventListener('click', () => { adminTab = t.dataset.tab; renderAdmin(); }));
 
 function renderAdmin() {
+  showSaveBar(false);
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === adminTab));
   $$('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.id !== `tab-${adminTab}`));
   ({
@@ -359,11 +360,128 @@ async function renderAdminProducts() {
   adminProducts = await api('/admin/products');
   $('#admin-products').innerHTML = adminProducts.map((p) => `<tr>
     <td>${esc(p.image)}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td>
-    <td class="num">${p.price}</td><td class="num">${p.stock}</td>
+    <td class="num">${p.price}</td>
+    <td class="num"><input type="number" min="0" step="1" class="stock-input" data-stock="${p.id}" value="${p.stock}" aria-label="Stock for ${esc(p.name)}" /></td>
     <td>${p.active ? 'Active' : '<span class="muted">Hidden</span>'}</td>
     <td><button class="btn sm" data-edit="${p.id}">Edit</button></td>
   </tr>`).join('');
+  updateStockDirty();
 }
+
+// Bulk stock editing: change any number of stock boxes, then save them together.
+function stockChanges() {
+  return $$('#admin-products .stock-input').flatMap((input) => {
+    const p = adminProducts.find((x) => x.id === Number(input.dataset.stock));
+    const changed = input.value !== '' && Number(input.value) !== p.stock;
+    input.classList.toggle('dirty', changed);
+    return changed ? [{ id: p.id, stock: Number(input.value) }] : [];
+  });
+}
+function showSaveBar(visible) {
+  $('#stock-bar').classList.toggle('hidden', !visible);
+  document.body.classList.toggle('has-save-bar', visible); // lifts toasts above the bar
+}
+function updateStockDirty() {
+  const n = stockChanges().length;
+  $('#stock-dirty').textContent = n ? `${n} unsaved stock change${n > 1 ? 's' : ''}` : '';
+  showSaveBar(n > 0 && adminTab === 'aproducts' && location.hash === '#admin');
+  $('#stock-save').textContent = n ? `Save ${n} stock change${n > 1 ? 's' : ''}` : 'Save stock changes';
+}
+$('#admin-products').addEventListener('input', (e) => { if (e.target.dataset.stock) updateStockDirty(); });
+$('#stock-reset').addEventListener('click', renderAdminProducts);
+$('#stock-save').addEventListener('click', async () => {
+  const updates = stockChanges();
+  if (!updates.length) return;
+  if (updates.some((u) => !Number.isInteger(u.stock) || u.stock < 0)) return toast('Stock must be a whole number, 0 or more');
+  try {
+    const r = await api('/admin/products-stock', { method: 'PUT', body: { updates } });
+    toast(`Stock updated for ${r.updated} product${r.updated > 1 ? 's' : ''}`);
+    await loadProducts();
+    renderAdminProducts();
+  } catch (err) { toast(err.message); }
+});
+
+// Bulk upload: read the CSV in the browser, ask the server for a preview, then confirm.
+let bulkCsv = null;
+const ACTION_LABELS = { create: 'New', update: 'Update', unchanged: 'No change', error: 'Error' };
+const FIELD_LABELS = { description: 'description', category: 'category', price: 'price', stock: 'stock', image: 'icon', active: 'active' };
+
+function renderBulkPreview(r) {
+  const s = r.summary;
+  const detail = (row) => {
+    if (row.action === 'error') return `<span class="negative">${row.errors.map(esc).join('; ')}</span>`;
+    if (row.action === 'create') {
+      const p = row.product;
+      return `${esc(p.image)} ${esc(p.category)} · 🪙 ${p.price} · stock ${p.stock}${p.active ? '' : ' · hidden'}`;
+    }
+    if (row.action === 'unchanged') return '<span class="muted">Already up to date</span>';
+    return row.changes.map((c) => `${FIELD_LABELS[c.field]}: <span class="muted">${esc(String(c.from))}</span> → <strong>${esc(String(c.to))}</strong>`).join('<br>');
+  };
+  const willChange = s.create + s.update;
+  $('#bulk-preview').innerHTML = `
+    <div class="pills">
+      ${s.create ? `<span class="pill create">${s.create} new</span>` : ''}
+      ${s.update ? `<span class="pill update">${s.update} to update</span>` : ''}
+      ${s.unchanged ? `<span class="pill">${s.unchanged} unchanged</span>` : ''}
+      ${s.error ? `<span class="pill error">${s.error} with errors</span>` : ''}
+    </div>
+    ${r.unknownColumns.length ? `<p class="small muted">Ignored columns: ${r.unknownColumns.map(esc).join(', ')}</p>` : ''}
+    <div class="preview-table"><table class="table">
+      <thead><tr><th>Row</th><th>Product</th><th>Action</th><th>Details</th></tr></thead>
+      <tbody>${r.rows.map((row) => `<tr class="${row.action}">
+        <td>${row.line}</td><td>${esc(row.name || '—')}</td>
+        <td><span class="pill ${row.action}">${ACTION_LABELS[row.action]}</span></td><td>${detail(row)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    ${s.error ? `<p class="error">Fix the ${s.error} row${s.error > 1 ? 's' : ''} with errors in your spreadsheet and upload it again. Nothing has been saved.</p>` : ''}
+    <div class="row">
+      <button id="bulk-confirm" class="btn primary" ${s.error || !willChange ? 'disabled' : ''}>
+        ${willChange ? `Import ${willChange} product${willChange > 1 ? 's' : ''}` : 'Nothing to import'}</button>
+      <button id="bulk-cancel" class="btn ghost">Cancel</button>
+    </div>`;
+}
+
+function resetBulk() {
+  bulkCsv = null;
+  $('#bulk-file').value = '';
+  $('#bulk-filename').textContent = '';
+  $('#bulk-preview').innerHTML = '';
+}
+
+$('#bulk-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('#bulk-filename').textContent = file.name;
+  if (/\.xlsx?$/i.test(file.name)) {
+    $('#bulk-preview').innerHTML = '<p class="error">That looks like an Excel file. In Excel choose File → Save As → <strong>CSV UTF-8 (Comma delimited)</strong>, then upload the .csv file.</p>';
+    return;
+  }
+  try {
+    bulkCsv = await file.text();
+    renderBulkPreview(await api('/admin/products-import', { method: 'POST', body: { csv: bulkCsv, dryRun: true } }));
+  } catch (err) {
+    bulkCsv = null;
+    $('#bulk-preview').innerHTML = `<p class="error">${esc(err.message)}</p>`;
+  }
+});
+
+$('#bulk-preview').addEventListener('click', async (e) => {
+  if (e.target.id === 'bulk-cancel') return resetBulk();
+  if (e.target.id !== 'bulk-confirm' || !bulkCsv) return;
+  e.target.disabled = true;
+  try {
+    const r = await api('/admin/products-import', { method: 'POST', body: { csv: bulkCsv, dryRun: false } });
+    if (!r.applied) { renderBulkPreview(r); return toast('Some rows have errors — nothing was saved'); }
+    toast(`Imported: ${r.summary.create} new, ${r.summary.update} updated`);
+    resetBulk();
+    await loadProducts();
+    renderAdminProducts();
+  } catch (err) {
+    toast(err.message);
+    e.target.disabled = false;
+  }
+});
+
 $('#admin-products').addEventListener('click', (e) => {
   const p = adminProducts.find((x) => x.id === Number(e.target.dataset.edit));
   if (!p) return;

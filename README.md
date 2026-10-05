@@ -14,6 +14,8 @@ A company merchandise store where staff spend **appreciation tokens** instead of
 - **Award tokens** to one or many staff at once, with a required reason (e.g. "Shipped the Q3 release")
 - **Orders**: move orders through statuses; cancelling refunds the tokens and returns the stock
 - **Products**: add or edit items, set price, stock and an emoji icon, and hide items
+- **Bulk upload**: download the CSV template, fill in many products in Excel, and upload it. You get a preview first (new, updated, unchanged and error rows), then everything is saved together, or nothing if any row has an error. A row whose name matches an existing product updates it, and blank cells are left unchanged, so a sheet with just `name,stock` restocks items. Column names are flexible (e.g. `qty`, `price (tokens)`), and both comma- and semicolon-separated files work. The limit is 1,000 rows per upload.
+- **Bulk stock edit**: type new numbers into the Stock column of the product list and save them all with one click
 - **FAQs**: edit the knowledge base the assistant uses
 
 **Collection days and email (SMTP)**
@@ -82,6 +84,7 @@ src/auth.js        password hashing (scrypt) and cookie sessions
 src/store.js       business logic: wallet, catalog, orders, FAQs
 src/bot.js         Merch Bot: Claude tool loop + offline FAQ fallback
 src/collection.js  collection days and booking orders onto them
+src/bulk.js        CSV parsing, bulk product import (preview + apply), bulk stock updates
 src/notifications.js  SMTP transport, email outbox worker, day-before reminder job
 src/emails.js      email templates (HTML + plain text)
 src/config.js      settings and timezone-aware date helpers

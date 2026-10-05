@@ -105,3 +105,32 @@ test('chat uses Claude with tools when a client is configured', async (t) => {
   assert.equal(calls[0].messages.length, 3);
   assert.match(calls[0].system[0].text, /Do my tokens expire\?/);
 });
+
+test('bulk product upload and stock API is admin-only and works end to end', async (t) => {
+  const { server, base } = await startServer();
+  t.after(() => server.close());
+  const staff = client(base);
+  await staff('/login', { method: 'POST', body: { email: 'bob@company.com', password: 'password123' } });
+  assert.equal((await staff('/admin/products-import', { method: 'POST', body: { csv: 'name,price\nX,1' } })).status, 403);
+  assert.equal((await staff('/admin/products-stock', { method: 'PUT', body: { updates: [] } })).status, 403);
+
+  const admin = client(base);
+  await admin('/login', { method: 'POST', body: { email: 'admin@company.com', password: 'password123' } });
+  const csv = 'name,price,stock\nLanyard,15,100\nKeychain,10,50';
+  const preview = await admin('/admin/products-import', { method: 'POST', body: { csv } });
+  assert.equal(preview.body.applied, false, 'preview is the default');
+  assert.equal(preview.body.summary.create, 2);
+  const done = await admin('/admin/products-import', { method: 'POST', body: { csv, dryRun: false } });
+  assert.equal(done.body.applied, true);
+
+  const products = (await admin('/admin/products')).body;
+  const lanyard = products.find((p) => p.name === 'Lanyard');
+  assert.equal(lanyard.stock, 100);
+  const stock = await admin('/admin/products-stock', { method: 'PUT', body: { updates: [{ id: lanyard.id, stock: 7 }] } });
+  assert.deepEqual(stock.body, { updated: 1 });
+  assert.equal((await staff('/products')).body.find((p) => p.name === 'Lanyard').stock, 7);
+
+  const bad = await admin('/admin/products-import', { method: 'POST', body: { csv: 'title\nX' } });
+  assert.equal(bad.status, 400);
+  assert.match(bad.body.error, /"name" column/);
+});

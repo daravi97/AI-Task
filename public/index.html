@@ -140,7 +140,23 @@
         </div>
 
         <div id="tab-aproducts" class="tab-panel hidden">
+          <div class="card form" id="bulk-card">
+            <div class="row between">
+              <h3 class="no-margin">📦 Bulk upload products</h3>
+              <a class="btn" href="/api/admin/products-template.csv" download>⬇ Download template</a>
+            </div>
+            <p class="muted no-margin">Fill in the template in Excel (one product per row), save it as <strong>CSV</strong>, then upload it.
+              Rows whose name matches an existing product <strong>update</strong> it, and blank cells are left as they are,
+              so a sheet with just <em>name</em> and <em>stock</em> restocks items in one go. You'll see a preview before anything is saved.</p>
+            <div class="row">
+              <label class="btn primary file-btn">⬆ Choose CSV file<input type="file" id="bulk-file" accept=".csv,text/csv" /></label>
+              <span id="bulk-filename" class="muted small"></span>
+            </div>
+            <div id="bulk-preview"></div>
+          </div>
+
           <form id="product-form" class="card form">
+            <h3 class="no-margin">Add or edit one product</h3>
             <input type="hidden" name="id" />
             <div class="row">
               <label>Icon <input name="image" maxlength="8" value="🎁" class="icon-input" /></label>
@@ -158,6 +174,15 @@
               <button class="btn ghost" type="reset">Clear</button>
             </div>
           </form>
+          <div class="toolbar">
+            <h3 class="no-margin">All products</h3>
+            <span class="muted small">Tip: type new numbers in the Stock column, then save them all at once.</span>
+          </div>
+          <div id="stock-bar" class="save-bar hidden">
+            <span id="stock-dirty"></span>
+            <button id="stock-reset" class="btn ghost">Undo</button>
+            <button id="stock-save" class="btn primary">Save stock changes</button>
+          </div>
           <table class="table">
             <thead><tr><th></th><th>Name</th><th>Category</th><th class="num">Price</th><th class="num">Stock</th><th>Status</th><th></th></tr></thead>
             <tbody id="admin-products"></tbody>
