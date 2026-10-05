@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "commonjs",
   "engines": {
-    "node": ">=22.5"
+    "node": ">=22.13"
   },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
@@ -15,6 +15,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "express": "^5.2.1",
-    "nodemailer": "^7.0.13"
+    "nodemailer": "^10.0.14"
   }
 }

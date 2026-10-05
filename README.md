@@ -39,7 +39,7 @@ A company merchandise store where staff spend **appreciation tokens** instead of
 
 ## Getting started
 
-Requires **Node.js 22.5+** (uses the built-in `node:sqlite`, so there is no native database driver to install).
+Requires **Node.js 22.13+** (uses the built-in `node:sqlite`, so there is no native database driver to install).
 
 ```bash
 npm install
