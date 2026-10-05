@@ -777,7 +777,9 @@ async function renderEmails() {
   let html;
   if (r.mode === 'smtp') {
     const mailtrap = /mailtrap/i.test(r.host);
+    const ethereal = /ethereal\.email/i.test(r.host);
     html = `✅ <strong>Sending through ${esc(r.host)}:${r.port}.</strong> ${when}
+      ${ethereal ? '<br>This is an <strong>Ethereal test inbox</strong>: emails are caught there and never reach real people. <a href="https://ethereal.email/messages" target="_blank" rel="noopener">Open Ethereal messages ↗</a>, or use <em>📬 Delivered copy</em> below.' : ''}
       ${mailtrap ? '<br>This is a <strong>Mailtrap sandbox</strong>: emails are caught in your Mailtrap inbox and never reach real people. <a href="https://mailtrap.io/inboxes" target="_blank" rel="noopener">Open Mailtrap ↗</a>' : ''}`;
   } else if (r.mode === 'ethereal') {
     html = `✅ <strong>Sending to a free test inbox (Ethereal).</strong> Emails are delivered for real over SMTP but caught in the test inbox, so they never reach real people.

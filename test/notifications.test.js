@@ -261,4 +261,9 @@ test('test inbox (Ethereal): one click creates an inbox, emails get a "delivered
   assert.equal(notifications.createMailer({}, { db, etherealApi }).mode, 'log', 'turning it off is remembered');
   assert.equal(notifications.createMailer({ SMTP_HOST: 'none' }, { db }).mode, 'log');
   await assert.rejects(notifications.createMailer({ SMTP_HOST: 'smtp.example.com' }, { db }).useTestInbox(), /SMTP is set/);
+
+  // An Ethereal account typed into .env (fixed SMTP) also records the delivered-copy link.
+  const fixed = notifications.createMailer({ SMTP_HOST: '127.0.0.1', SMTP_PORT: String(smtp.server.address().port), SMTP_SECURE: 'false', SMTP_USER: 'u', SMTP_PASS: 'p' });
+  const sent = await fixed.send({ to: 'x@example.com', subject: 'Hi', text: 'Hi' });
+  assert.match(sent.previewUrl, /^https:\/\/ethereal\.email\/message\/msg\d+$/);
 });

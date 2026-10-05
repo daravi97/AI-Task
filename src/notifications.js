@@ -63,7 +63,17 @@ function createMailer(env = process.env, { db = null, etherealApi } = {}) {
     const transport = smtpTransport({
       host, port, secure: env.SMTP_SECURE ? env.SMTP_SECURE === 'true' : port === 465, user: env.SMTP_USER, pass: env.SMTP_PASS,
     });
-    impl = { mode: 'smtp', host, port, send: (msg) => transport.sendMail({ from, ...msg }), verify: () => transport.verify() };
+    impl = {
+      mode: 'smtp',
+      host,
+      port,
+      send: async (msg) => {
+        const info = await transport.sendMail({ from, ...msg });
+        // An Ethereal account typed into .env also gets "Delivered copy" links.
+        return { ...info, previewUrl: nodemailer.getTestMessageUrl(info) || null };
+      },
+      verify: () => transport.verify(),
+    };
   } else if (host.toLowerCase() !== 'none' && savedAccount()) {
     useAccount(savedAccount());
   } else {
