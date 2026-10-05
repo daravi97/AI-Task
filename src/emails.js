@@ -72,8 +72,7 @@ function qrText(order) {
   return order.pickup_code ? `\n\nPickup code: ${formatCode(order.pickup_code)} (show the QR code in this email, or say this code, at the collection desk)` : '';
 }
 
-function layout({ title, bodyHtml }) {
-  const ordersUrl = `${settings.appUrl}/#orders`;
+function layout({ title, bodyHtml, button = { label: 'View my orders', url: `${settings.appUrl}/#orders` } }) {
   return `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f5f5f4;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#000000">
   <table role="presentation" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;border:1px solid #e3e3e1">
@@ -81,7 +80,7 @@ function layout({ title, bodyHtml }) {
     <tr><td style="padding:24px">
       <h1 style="font-size:20px;margin:0 0 16px">${esc(title)}</h1>
       ${bodyHtml}
-      <p style="margin:24px 0 0"><a href="${esc(ordersUrl)}" style="display:inline-block;background:#046a38;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px">View my orders</a></p>
+      <p style="margin:24px 0 0"><a href="${esc(button.url)}" style="display:inline-block;background:#046a38;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px">${esc(button.label)}</a></p>
     </td></tr>
     <tr><td style="padding:16px 24px;border-top:1px solid #e3e3e1;font-size:12px;color:#53565a">
       This is an automated message from the ${esc(settings.companyName)} Merch Store. Questions? Ask Merch Bot in the store or contact the HR / People team.
@@ -182,6 +181,48 @@ ${itemsText(order)}${footerText()}`;
         bodyHtml: `<p>Hi ${esc(firstName(user.name))}, this is a test email from the Merch Store admin portal. If you can read this, outgoing email is configured correctly.</p>`,
       }),
       text: `Hi ${firstName(user.name)},\n\nThis is a test email from the Merch Store admin portal. If you can read this, outgoing email is configured correctly.${footerText()}`,
+    };
+  },
+
+  welcome(user, link, { invitedBy, tokens = 0 } = {}) {
+    const intro = `${invitedBy ? `${invitedBy} has` : 'You have been'} set you up on the ${settings.companyName} Merch Store, where you spend appreciation tokens on company merchandise.`;
+    const bonus = tokens > 0 ? ` You already have ${tokens} tokens to spend.` : '';
+    return {
+      subject: `Welcome to the ${settings.companyName} Merch Store – set your password`,
+      html: layout({
+        title: `Welcome, ${firstName(user.name)}! 👋`,
+        bodyHtml: `<p>${esc(intro)}${esc(bonus)}</p>
+          <p>Your sign-in email is <strong>${esc(user.email)}</strong>. Choose a password with the button below. The link works once and expires in 7 days.</p>`,
+        button: { label: 'Set my password', url: link },
+      }),
+      text: `Hi ${firstName(user.name)},
+
+${intro}${bonus}
+
+Your sign-in email is ${user.email}. Choose your password here (the link works once and expires in 7 days):
+${link}
+
+— ${settings.companyName} Merch Store`,
+    };
+  },
+
+  password_reset(user, link) {
+    return {
+      subject: 'Reset your Merch Store password',
+      html: layout({
+        title: 'Reset your password',
+        bodyHtml: `<p>Hi ${esc(firstName(user.name))}, someone (hopefully you) asked to reset the password for <strong>${esc(user.email)}</strong>.</p>
+          <p>Choose a new password with the button below. The link works once and expires in 1 hour. If you didn't ask for this, ignore this email; your password stays the same.</p>`,
+        button: { label: 'Choose a new password', url: link },
+      }),
+      text: `Hi ${firstName(user.name)},
+
+Someone (hopefully you) asked to reset the password for ${user.email}. Choose a new one here (the link works once and expires in 1 hour):
+${link}
+
+If you didn't ask for this, ignore this email; your password stays the same.
+
+— ${settings.companyName} Merch Store`,
     };
   },
 };

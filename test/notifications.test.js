@@ -267,3 +267,14 @@ test('test inbox (Ethereal): one click creates an inbox, emails get a "delivered
   const sent = await fixed.send({ to: 'x@example.com', subject: 'Hi', text: 'Hi' });
   assert.match(sent.previewUrl, /^https:\/\/ethereal\.email\/message\/msg\d+$/);
 });
+
+test('SMTP_HOST=gmail fills in Gmail settings and sends from the account itself', () => {
+  const { createMailer } = require('../src/notifications');
+  const m = createMailer({
+    SMTP_HOST: 'gmail', SMTP_USER: ' me@gmail.com ', SMTP_PASS: 'abcd efgh ijkl mnop', MAIL_FROM: '"Deloitte Merch" <merch@other.com>',
+  });
+  assert.deepEqual(m.info(), {
+    mode: 'smtp', from: '"Deloitte Merch" <me@gmail.com>', host: 'smtp.gmail.com', port: 465, provider: 'gmail',
+  });
+  assert.equal(createMailer({ SMTP_HOST: 'smtp.gmail.com', SMTP_USER: 'me@gmail.com' }).info().from, '"Merch Store" <me@gmail.com>');
+});

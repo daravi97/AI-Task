@@ -1,6 +1,6 @@
 {
   "name": "token-merch-store",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Company merchandise store where staff spend appreciation tokens, with a built-in FAQ assistant bot.",
   "main": "server.js",
   "type": "commonjs",

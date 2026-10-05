@@ -117,6 +117,16 @@ CREATE TABLE IF NOT EXISTS app_settings (
 CREATE INDEX IF NOT EXISTS idx_ledger_user ON token_ledger(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_collection_days_date ON collection_days(date);
+-- One-time "set your password" links (welcome and forgot-password emails). Only a hash of the link is kept.
+CREATE TABLE IF NOT EXISTS password_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose TEXT NOT NULL CHECK (purpose IN ('invite', 'reset')),
+  created_at TEXT NOT NULL,        -- ISO timestamps
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_outbox_status ON email_outbox(status, next_attempt_at);
 `;
 

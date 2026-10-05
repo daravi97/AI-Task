@@ -37,7 +37,7 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.remove('hidden');
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.add('hidden'), 3000);
+  toast.timer = setTimeout(() => t.classList.add('hidden'), Math.max(3000, msg.length * 60));
 }
 
 function setBalance(n) {
@@ -69,13 +69,37 @@ async function renderHero(me) {
 }
 
 // ---------- Auth ----------
-function showLogin() {
+function showLogin(card = 'login-form') {
   state.user = null;
   $('#app-view').classList.add('hidden');
   $('#login-view').classList.remove('hidden');
+  ['login-form', 'forgot-form', 'setpw-form'].forEach((id) => $(`#${id}`).classList.toggle('hidden', id !== card));
+}
+
+// "#set-password/<token>" comes from the welcome and forgot-password emails.
+async function showSetPassword(token) {
+  showLogin('setpw-form');
+  const f = $('#setpw-form');
+  f.reset();
+  f.dataset.token = token;
+  $('#setpw-error').textContent = '';
+  $('#setpw-who').textContent = 'Checking your link…';
+  try {
+    const link = await api(`/password-link/${encodeURIComponent(token)}`);
+    $('#setpw-title').textContent = link.purpose === 'invite' ? `Welcome, ${link.name.split(' ')[0]}!` : 'Choose a new password';
+    $('#setpw-who').textContent = `Choose a password for ${link.email}. Use at least 8 characters.`;
+    f.elements.username.value = link.email;
+    f.querySelector('button[type=submit]').disabled = false;
+  } catch (err) {
+    $('#setpw-who').textContent = '';
+    $('#setpw-error').textContent = err.message;
+    f.querySelector('button[type=submit]').disabled = true;
+  }
 }
 
 async function boot() {
+  const [view, token] = location.hash.slice(1).split('/');
+  if (view === 'set-password' && token) return showSetPassword(token);
   try {
     const me = await api('/me');
     state.user = me.user;
@@ -111,6 +135,47 @@ $('#login-form').addEventListener('submit', async (e) => {
   }
 });
 
+$('#forgot-link').addEventListener('click', () => {
+  showLogin('forgot-form');
+  $('#forgot-msg').textContent = '';
+  $('#forgot-form').elements.email.value = $('#login-form').elements.email.value;
+});
+$$('.back-to-login').forEach((b) => b.addEventListener('click', () => {
+  history.replaceState(null, '', location.pathname);
+  showLogin();
+}));
+$('#forgot-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const r = await api('/forgot-password', { method: 'POST', body: { email: e.target.elements.email.value } });
+    $('#forgot-msg').textContent = r.message;
+  } catch (err) {
+    $('#forgot-msg').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+$('#setpw-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  $('#setpw-error').textContent = '';
+  if (f.elements.password.value !== f.elements.confirm.value) {
+    $('#setpw-error').textContent = "The two passwords don't match";
+    return;
+  }
+  try {
+    await api('/set-password', { method: 'POST', body: { token: f.dataset.token, password: f.elements.password.value } });
+    f.reset();
+    history.replaceState(null, '', `${location.pathname}#shop`);
+    await boot();
+    toast('Password saved. You are logged in.');
+  } catch (err) {
+    $('#setpw-error').textContent = err.message;
+  }
+});
+
 $('#logout-btn').addEventListener('click', async () => {
   await api('/logout', { method: 'POST' }).catch(() => {});
   state.chatHistory = [];
@@ -139,7 +204,12 @@ function route() {
   $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
   VIEWS[view](arg);
 }
-window.addEventListener('hashchange', () => { $$('.save-bar').forEach((b) => setBar(b.id, false)); if (state.user) route(); });
+window.addEventListener('hashchange', () => {
+  $$('.save-bar').forEach((b) => setBar(b.id, false));
+  // A set-password link opened while this tab is already showing the store.
+  if (location.hash.startsWith('#set-password/')) return boot();
+  if (state.user) route();
+});
 
 // ---------- Shop ----------
 async function loadProducts() {
@@ -384,8 +454,31 @@ async function renderAward() {
     `<label><input type="checkbox" value="${u.id}" /> ${esc(u.name)} <span class="muted small">${esc(u.department || '')}</span></label>`).join('');
   $('#staff-table').innerHTML = users.map((u) => `<tr>
     <td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.department)}</td><td>${esc(u.role)}</td><td class="num">${u.balance}</td>
+    <td><button class="btn ghost sm" data-invite="${u.id}" title="Email a new set-password link">Send login link</button></td>
   </tr>`).join('');
 }
+const emailNote = (mode) => (mode === 'log'
+  ? ' Email is not set up yet, so it was only recorded in Admin → Emails.'
+  : mode === 'ethereal' ? ' It went to the Ethereal test inbox, not the real mailbox.' : '');
+$('#staff-table').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-invite]');
+  if (!btn) return;
+  btn.disabled = true;
+  try {
+    const r = await api(`/admin/users/${btn.dataset.invite}/invite`, { method: 'POST' });
+    toast(`Login link emailed to ${r.email}.${emailNote(r.emailMode)}`);
+  } catch (err) { toast(err.message); } finally { btn.disabled = false; }
+});
+$('#add-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target));
+  try {
+    const r = await api('/admin/users', { method: 'POST', body });
+    toast(`${r.user.name} added. Welcome email sent to ${r.user.email}.${emailNote(r.emailMode)}`);
+    e.target.reset();
+    renderAward();
+  } catch (err) { toast(err.message); }
+});
 $('#award-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);

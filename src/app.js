@@ -1,6 +1,7 @@
 const path = require('node:path');
 const express = require('express');
 const auth = require('./auth');
+const accounts = require('./accounts');
 const store = require('./store');
 const collection = require('./collection');
 const notifications = require('./notifications');
@@ -55,6 +56,14 @@ function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
 
   const api = express.Router();
 
+  function signIn(req, res, userId) {
+    const token = auth.createSession(db, userId);
+    res.cookie(COOKIE, token, {
+      httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: auth.SESSION_DAYS * 864e5,
+    });
+    return auth.getSessionUser(db, token);
+  }
+
   // ----- Auth -----
   api.post('/login', (req, res) => {
     const { email, password } = req.body ?? {};
@@ -62,11 +71,19 @@ function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
     if (!row || !auth.verifyPassword(String(password ?? ''), row.password_hash)) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    const token = auth.createSession(db, row.id);
-    res.cookie(COOKIE, token, {
-      httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: auth.SESSION_DAYS * 864e5,
-    });
-    res.json({ user: auth.getSessionUser(db, token) });
+    res.json({ user: signIn(req, res, row.id) });
+  });
+
+  // ----- Passwords: welcome links and "Forgot password?" -----
+  api.post('/forgot-password', (req, res) => {
+    accounts.requestPasswordReset(db, req.body?.email);
+    email.kick();
+    res.json({ ok: true, message: 'If that email is registered, a reset link is on its way. Check your inbox (and spam).' });
+  });
+  api.get('/password-link/:token', (req, res) => res.json(accounts.describeToken(db, req.params.token)));
+  api.post('/set-password', (req, res) => {
+    const userId = accounts.setPassword(db, req.body?.token, req.body?.password);
+    res.json({ user: signIn(req, res, userId) });
   });
 
   api.post('/logout', (req, res) => {
@@ -129,6 +146,16 @@ function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
   const admin = express.Router();
   admin.use(requireUser, requireAdmin);
   admin.get('/users', (_req, res) => res.json(store.listStaff(db)));
+  admin.post('/users', (req, res) => {
+    const user = accounts.createUser(db, req.body ?? {}, req.user);
+    email.kick();
+    res.status(201).json({ user, emailMode: mailInfo().mode });
+  });
+  admin.post('/users/:id/invite', (req, res) => {
+    const r = accounts.resendInvite(db, id(req), req.user);
+    email.kick();
+    res.json({ ...r, emailMode: mailInfo().mode });
+  });
   admin.post('/award', (req, res) => {
     const { userIds, amount, reason } = req.body ?? {};
     res.json(store.awardTokens(db, { userIds: (userIds ?? []).map(Number), amount, reason, adminId: req.user.id }));
@@ -240,7 +267,7 @@ function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err instanceof store.StoreError || err instanceof collection.CollectionError || err instanceof bulk.BulkError) return res.status(err.status).json({ error: err.message });
+    if (err instanceof store.StoreError || err instanceof accounts.AccountError || err instanceof collection.CollectionError || err instanceof bulk.BulkError) return res.status(err.status).json({ error: err.message });
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'That file is too large (max 2 MB)' });
     console.error(err);

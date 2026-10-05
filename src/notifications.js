@@ -23,7 +23,29 @@ function smtpTransport({ host, port, secure, user, pass }) {
 //              from Admin → Emails, or with SMTP_HOST=ethereal. The account is kept in the
 //              database so the same inbox is reused after a restart.
 //   log      – nothing configured: emails are only recorded in Admin → Emails.
+// SMTP_HOST=gmail (or smtp.gmail.com) sends from a real Gmail account. Gmail needs an App Password
+// (Google Account → Security → 2-Step Verification → App passwords), not the normal password, and it
+// always sends From the account itself, so MAIL_FROM is reduced to a display name.
+function gmailSettings(env) {
+  const user = String(env.SMTP_USER || '').trim();
+  const name = String(env.MAIL_FROM || '').match(/^\s*"?([^"<]*?)"?\s*</)?.[1] || 'Merch Store';
+  return {
+    ...env,
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_PORT: '465',
+    SMTP_SECURE: 'true',
+    SMTP_USER: user,
+    SMTP_PASS: String(env.SMTP_PASS || '').replace(/\s+/g, ''), // Google shows it as "abcd efgh ijkl mnop"
+    MAIL_FROM: `"${name.replace(/"/g, '')}" <${user}>`,
+  };
+}
+
+const GMAIL_LOGIN_HINT = 'Gmail refused the login. Use a 16-character App Password (Google Account → Security → '
+  + '2-Step Verification → App passwords) as SMTP_PASS, not your normal Gmail password, and check SMTP_USER is the full Gmail address.';
+
 function createMailer(env = process.env, { db = null, etherealApi } = {}) {
+  const gmail = ['gmail', 'smtp.gmail.com'].includes(String(env.SMTP_HOST || '').trim().toLowerCase());
+  if (gmail) env = gmailSettings(env);
   const from = env.MAIL_FROM || 'Merch Store <no-reply@merch-store.local>';
   const host = String(env.SMTP_HOST || '').trim();
   const fixedSmtp = host && !['ethereal', 'none'].includes(host.toLowerCase());
@@ -66,9 +88,16 @@ function createMailer(env = process.env, { db = null, etherealApi } = {}) {
     impl = {
       mode: 'smtp',
       host,
+      provider: gmail ? 'gmail' : null,
       port,
       send: async (msg) => {
-        const info = await transport.sendMail({ from, ...msg });
+        let info;
+        try {
+          info = await transport.sendMail({ from, ...msg });
+        } catch (err) {
+          if (gmail && err.code === 'EAUTH') err.message = `${GMAIL_LOGIN_HINT} (${err.message})`;
+          throw err;
+        }
         // An Ethereal account typed into .env also gets "Delivered copy" links.
         return { ...info, previewUrl: nodemailer.getTestMessageUrl(info) || null };
       },
@@ -87,7 +116,7 @@ function createMailer(env = process.env, { db = null, etherealApi } = {}) {
     fixed: Boolean(fixedSmtp),
     info() {
       const base = { mode: impl.mode, from };
-      if (impl.mode === 'smtp') return { ...base, host: impl.host, port: impl.port };
+      if (impl.mode === 'smtp') return { ...base, host: impl.host, port: impl.port, provider: impl.provider };
       if (impl.mode === 'ethereal') {
         return { ...base, host: impl.account.smtp.host, inbox: { loginUrl: ETHEREAL_LOGIN, user: impl.account.user, pass: impl.account.pass } };
       }
@@ -278,6 +307,6 @@ function startScheduler(db, mailer, { outboxEveryMs = 30_000, remindersEveryMs =
 }
 
 module.exports = {
-  createMailer, queueOrderEmail, queueTestEmail, processOutbox, retryEmail, listEmails, getEmail, previewHtml,
+  createMailer, enqueue, queueOrderEmail, queueTestEmail, processOutbox, retryEmail, listEmails, getEmail, previewHtml,
   runReminders, startScheduler, ACTIVE_STATUSES,
 };

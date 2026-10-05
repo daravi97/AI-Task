@@ -11,6 +11,7 @@ A company merchandise store where staff spend **appreciation tokens** instead of
 - **My Wallet**: balance plus the full history of awards, purchases and refunds, including who awarded tokens and why
 
 **Admins**
+- **Register people** (Admin → People & tokens → *Add a person*): name, real email (Gmail, Outlook, company mail…), department, role and optional starting tokens. They get a **welcome email with a one-time "set your password" link** (valid 7 days), so nobody else ever knows their password. *Send login link* on the staff list re-sends it. Staff who forget their password use **Forgot password?** on the login page (a 1-hour link; the answer is the same whether or not the email is registered, and setting a new password signs out their other devices).
 - **Award tokens** to one or many staff at once, with a required reason (e.g. "Shipped the Q3 release")
 - **Orders, processed in batches**: there's no approval step at checkout, because spending the tokens is the approval. The admin works one collection day at a time:
   1. **Cut-off**: filter to the day, select all, then *Mark processing*. Staff can no longer cancel those orders.
@@ -49,7 +50,23 @@ A company merchandise store where staff spend **appreciation tokens** instead of
 | Your PC (`npm start`, `start.bat`, `phone.bat`) | [Ethereal](https://ethereal.email) | Admin → Emails → **📬 Use a free test inbox**. Nothing else. The app creates the inbox, shows its login, and adds a *📬 Delivered copy* link to every sent email. The inbox is remembered across restarts. You can also set `SMTP_HOST=ethereal`. |
 | Render (free plan) | [Mailtrap Email Sandbox](https://mailtrap.io) | Render's free plan blocks SMTP ports 25/465/587, so Ethereal can't be used there. Sign up free at mailtrap.io, open **Sandboxes → your sandbox → Integration → SMTP**, and copy the username and password. In Render → your service → **Environment**, add `SMTP_HOST=sandbox.smtp.mailtrap.io`, `SMTP_PORT=2525`, `SMTP_USER=…`, `SMTP_PASS=…`. Render redeploys, and every email then appears in your Mailtrap inbox. |
 
-For **real** delivery to real inboxes, use your company's SMTP server (e.g. Microsoft 365) on a host that allows SMTP, or a provider that accepts port 2525 (e.g. Brevo).
+**Real emails from your own Gmail account** (on your PC, including over the phone tunnel):
+
+1. Turn on **2-Step Verification** for the Gmail account: [myaccount.google.com/security](https://myaccount.google.com/security).
+2. Create an **App Password**: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), name it `Merch Store`, and copy the 16 letters. Your normal Gmail password won't work.
+3. In `.env` (copy `.env.example` if you don't have one):
+   ```
+   SMTP_HOST=gmail
+   SMTP_USER=yourname@gmail.com
+   SMTP_PASS=abcd efgh ijkl mnop
+   MAIL_FROM="Merch Store <yourname@gmail.com>"
+   ```
+   `SMTP_HOST=gmail` fills in the rest (`smtp.gmail.com`, port 465, TLS). Emails are always sent *from* that Gmail address; only the name in `MAIL_FROM` is used.
+4. Restart (`start.bat`), then Admin → Emails → **Send test email**, or add yourself under *Add a person*.
+
+Notes: a personal Gmail account can send about **500 emails a day**. First emails from a new sender sometimes land in **Spam**; mark them *Not spam*. Render's free plan blocks SMTP ports, so Gmail only works where the app runs on your PC (or a paid host). If a send fails, Admin → Emails shows why.
+
+For a company rollout, use your company's SMTP server (e.g. Microsoft 365) on a host that allows SMTP, or a provider that accepts port 2525 (e.g. Brevo).
 
 **Assistant bot (💬 bottom-right)**
 - **With `ANTHROPIC_API_KEY` set:** it uses Claude (`claude-opus-5-5`). The FAQs go in its system prompt, and it has read-only tools to look up the user's balance, orders and the live catalog. It can't place orders or move tokens.
@@ -131,7 +148,7 @@ test/              node:test suites
 | `DB_PATH`           | `./data/store.db`  | SQLite file                               |
 | `ANTHROPIC_API_KEY` | *(empty)*          | Turns on the Claude-powered assistant     |
 | `ASSISTANT_MODEL`   | `claude-opus-5-5`  | Override the assistant model              |
-| `SMTP_HOST`         | *(empty)*          | SMTP server. Empty means emails are only recorded, not delivered |
+| `SMTP_HOST`         | *(empty)*          | SMTP server, or `gmail` / `ethereal` shortcuts. Empty means emails are only recorded, not delivered |
 | `SMTP_PORT`         | `587`              | 587 (STARTTLS) or 465 (TLS)               |
 | `SMTP_SECURE`       | `true` if port 465 | Force implicit TLS on or off              |
 | `SMTP_USER` / `SMTP_PASS` | *(empty)*    | SMTP login, if your server needs one      |
@@ -141,7 +158,7 @@ test/              node:test suites
 | `APP_TIMEZONE`      | server timezone    | Timezone for collection dates and reminders (e.g. `Asia/Kuala_Lumpur`) |
 | `REMINDER_HOUR`     | `9`                | Local hour (0–23) the day-before reminders start going out |
 
-**SMTP examples:** for Microsoft 365, use `smtp.office365.com`, port 587, and a licensed mailbox (SMTP AUTH must be enabled for it). For Google Workspace, use `smtp.gmail.com`, port 587, and an app password, or the SMTP relay service. Your IT team's internal relay usually needs no login.
+**SMTP examples:** for Microsoft 365, use `smtp.office365.com`, port 587, and a licensed mailbox (SMTP AUTH must be enabled for it). For Gmail or Google Workspace, use `SMTP_HOST=gmail` with an App Password (see above), or the SMTP relay service. Your IT team's internal relay usually needs no login.
 
 ## Ideas for next steps
 - Single sign-on (Google Workspace / Microsoft Entra) instead of local passwords
