@@ -44,8 +44,10 @@ Requires **Node.js 22.13+** (uses the built-in `node:sqlite`, so there is no nat
 ```bash
 npm install
 cp .env.example .env      # optionally add ANTHROPIC_API_KEY
-npm start                 # http://localhost:3000
+npm start                 # opens http://localhost:3000 in your browser
 ```
+
+`npm start` opens the site in your default browser (set `OPEN_BROWSER=false` in `.env` to stop that). If port 3000 is busy it uses the next free port and prints the address. Press `Ctrl+C` to stop the server.
 
 On first run the database is created at `./data/store.db` and seeded with demo data:
 
