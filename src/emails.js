@@ -29,23 +29,23 @@ function itemsHtml(order) {
   const rows = order.items.map((i) => `
     <tr>
       <td style="padding:6px 0">${i.quantity} × ${esc(i.product_name)}</td>
-      <td style="padding:6px 0;text-align:right">🪙 ${i.unit_price * i.quantity}</td>
+      <td style="padding:6px 0;text-align:right"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#86bc25;vertical-align:-1px;margin-right:6px"></span>${i.unit_price * i.quantity}</td>
     </tr>`).join('');
   return `<table role="presentation" width="100%" style="border-collapse:collapse;font-size:14px">${rows}
-    <tr><td style="padding:8px 0;border-top:1px solid #e3e6ee"><strong>Total</strong></td>
-        <td style="padding:8px 0;border-top:1px solid #e3e6ee;text-align:right"><strong>🪙 ${order.total} tokens</strong></td></tr>
+    <tr><td style="padding:8px 0;border-top:1px solid #e3e3e1"><strong>Total</strong></td>
+        <td style="padding:8px 0;border-top:1px solid #e3e3e1;text-align:right"><strong><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#86bc25;vertical-align:-1px;margin-right:6px"></span>${order.total} tokens</strong></td></tr>
   </table>`;
 }
 
 function collectionBoxHtml(day, heading = 'Collection details') {
   const c = collectionLines(day);
   if (!c) {
-    return `<div style="background:#fef3c7;border-radius:8px;padding:14px 16px;margin:16px 0">
+    return `<div style="background:#f2f2f2;border-radius:8px;padding:14px 16px;margin:16px 0">
       <strong>Collection date to be confirmed</strong><br>
       We'll email you as soon as the next collection day is scheduled.
     </div>`;
   }
-  return `<div style="background:#eef2ff;border-radius:8px;padding:14px 16px;margin:16px 0;line-height:1.6">
+  return `<div style="background:#f1f8e6;border-radius:8px;padding:14px 16px;margin:16px 0;line-height:1.6">
     <strong>${esc(heading)}</strong><br>
     📅 ${esc(c.when)}<br>
     📍 ${esc(c.where)}${c.notes ? `<br>ℹ️ ${esc(c.notes)}` : ''}
@@ -60,10 +60,10 @@ function collectionText(day) {
 
 function qrHtml(order) {
   if (!order.pickup_code) return '';
-  return `<div style="text-align:center;border:1px dashed #c7cbe0;border-radius:8px;padding:16px;margin:16px 0">
+  return `<div style="text-align:center;border:1px dashed #c9e3a0;border-radius:8px;padding:16px;margin:16px 0">
     <div style="font-weight:600;margin-bottom:8px">Show this at the collection desk</div>
     <img src="cid:${QR_CID}" width="180" height="180" alt="Pickup QR code for order #${order.id}" style="display:block;margin:0 auto">
-    <div style="margin-top:8px;font-size:13px;color:#6b7385">Pickup code</div>
+    <div style="margin-top:8px;font-size:13px;color:#53565a">Pickup code</div>
     <div style="font-size:22px;font-weight:700;letter-spacing:3px;font-family:Consolas,Menlo,monospace">${esc(formatCode(order.pickup_code))}</div>
   </div>`;
 }
@@ -75,15 +75,15 @@ function qrText(order) {
 function layout({ title, bodyHtml }) {
   const ordersUrl = `${settings.appUrl}/#orders`;
   return `<!doctype html>
-<html><body style="margin:0;padding:24px;background:#f6f7fb;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d2433">
-  <table role="presentation" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;border:1px solid #e3e6ee">
-    <tr><td style="padding:20px 24px;border-bottom:1px solid #e3e6ee;font-size:18px;font-weight:700">🎁 ${esc(settings.companyName)} Merch Store</td></tr>
+<html><body style="margin:0;padding:24px;background:#f5f5f4;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#000000">
+  <table role="presentation" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;border:1px solid #e3e3e1">
+    <tr><td style="padding:20px 24px;background:#000000;color:#ffffff;border-radius:12px 12px 0 0;font-size:18px;font-weight:700">${esc(settings.companyName)} Merch Store<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#86bc25;margin-left:3px"></span></td></tr>
     <tr><td style="padding:24px">
       <h1 style="font-size:20px;margin:0 0 16px">${esc(title)}</h1>
       ${bodyHtml}
-      <p style="margin:24px 0 0"><a href="${esc(ordersUrl)}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px">View my orders</a></p>
+      <p style="margin:24px 0 0"><a href="${esc(ordersUrl)}" style="display:inline-block;background:#046a38;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px">View my orders</a></p>
     </td></tr>
-    <tr><td style="padding:16px 24px;border-top:1px solid #e3e6ee;font-size:12px;color:#6b7385">
+    <tr><td style="padding:16px 24px;border-top:1px solid #e3e3e1;font-size:12px;color:#53565a">
       This is an automated message from the ${esc(settings.companyName)} Merch Store. Questions? Ask Merch Bot in the store or contact the HR / People team.
     </td></tr>
   </table>
@@ -105,7 +105,7 @@ const templates = {
         ${itemsHtml(order)}
         ${collectionBoxHtml(day, 'Please collect your items on')}
         ${qrHtml(order)}
-        <p style="color:#6b7385;font-size:14px">We'll send you a reminder the day before. Changed your mind? You can cancel from My Orders while the order is still pending and your tokens will be refunded.</p>`,
+        <p style="color:#53565a;font-size:14px">We'll send you a reminder the day before. Changed your mind? You can cancel from My Orders while the order is still pending and your tokens will be refunded.</p>`,
     });
     const text = `Hi ${firstName(order.user_name)},
 
