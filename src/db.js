@@ -165,7 +165,9 @@ const SEED_FAQS = [
     'help contact support human hr admin problem issue'],
 ];
 
-const DEMO_PASSWORD = 'password123';
+// Password for the seeded demo accounts. Set SEED_PASSWORD when the site is public
+// (e.g. on Render) so the published default can't be used to log in as admin.
+const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'password123';
 
 function openDb(dbPath) {
   if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });

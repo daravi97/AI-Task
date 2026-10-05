@@ -18,3 +18,7 @@ services:
         value: Asia/Kuala_Lumpur
       - key: COMPANY_NAME
         value: Company
+      # You'll be asked to type this during setup: the password for the demo accounts
+      # (admin@company.com, alice@company.com, bob@company.com). Keeps the public demo private.
+      - key: SEED_PASSWORD
+        sync: false

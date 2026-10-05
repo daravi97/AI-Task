@@ -56,7 +56,12 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
   });
 
   // Public: lets the UI (and a second `npm start`) tell which version is running.
-  api.get('/version', (_req, res) => res.json({ app: 'token-merch-store', version: VERSION }));
+  api.get('/version', (_req, res) => res.json({
+    app: 'token-merch-store',
+    version: VERSION,
+    // Only reveal the demo password on the login page when it's the well-known default.
+    demoPassword: process.env.SEED_PASSWORD ? null : 'password123',
+  }));
 
   api.get('/me', requireUser, (req, res) => {
     res.json({ user: req.user, balance: store.getBalance(db, req.user.id), assistantMode: assistant.mode });

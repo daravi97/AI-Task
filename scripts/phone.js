@@ -25,7 +25,7 @@ function printPhoneLink(url, note) {
     if (!err) console.log(qr.split('\n').map((l) => `      ${l}`).join('\n'));
     console.log(`  ${url}`);
     if (note) console.log(`\n  ${note}`);
-    console.log('  Log in with the demo accounts (password: password123). Press Ctrl+C to stop.');
+    console.log(`  Log in with the demo accounts (password: ${process.env.SEED_PASSWORD ? 'your SEED_PASSWORD' : 'password123'}). Press Ctrl+C to stop.`);
     console.log('  ==================================================================\n');
   });
 }

@@ -71,7 +71,7 @@ Run **`npm run phone`** (on Windows, double-click **`phone.bat`**). It starts th
 
 ### Free hosting for a demo (Render)
 
-`render.yaml` lets you put a demo online on [Render's free plan](https://render.com/docs/free): in Render choose **New → Blueprint** and pick this GitHub repo. Limits of the free plan: it sleeps after 15 minutes without visitors (the first visit then takes about a minute), and it has **no persistent disk**, so orders and changes reset to the demo data whenever it restarts. Fine for showing people, not for real use. Real use needs a proper database (PostgreSQL or SQL Server) or a paid disk, or hosting on a company server or Azure.
+`render.yaml` lets you put a demo online on [Render's free plan](https://render.com/docs/free): in Render choose **New → Blueprint** and pick this GitHub repo. During setup Render asks for **`SEED_PASSWORD`**, the password for the demo accounts, so the public site can't be opened with the published `password123`. Limits of the free plan: it sleeps after 15 minutes without visitors (the first visit then takes about a minute), and it has **no persistent disk**, so orders and changes reset to the demo data whenever it restarts. Fine for showing people, not for real use. Real use needs a proper database (PostgreSQL or SQL Server) or a paid disk, or hosting on a company server or Azure.
 
 On first run the database is created at `./data/store.db` and seeded with demo data:
 

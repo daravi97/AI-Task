@@ -76,7 +76,7 @@ function listen(port, attemptsLeft = 10) {
     const lan = Object.values(require('node:os').networkInterfaces()).flat()
       .filter((n) => n && n.family === 'IPv4' && !n.internal).map((n) => `http://${n.address}:${port}`);
     if (lan.length) console.log(`  On a phone on the same Wi-Fi: ${lan.join('  or  ')}`);
-    console.log('  Demo logins (password: password123): alice@company.com, bob@company.com (staff), admin@company.com (admin)');
+    console.log(`  Demo logins (password: ${process.env.SEED_PASSWORD ? 'your SEED_PASSWORD' : 'password123'}): alice@company.com, bob@company.com (staff), admin@company.com (admin)`);
     console.log(`  Assistant: ${assistant.mode === 'claude' ? 'Claude' : 'FAQ keyword matching (set ANTHROPIC_API_KEY for Claude)'}`);
     console.log(`  Email: ${mailer.mode === 'smtp' ? `SMTP via ${process.env.SMTP_HOST}` : 'log only (set SMTP_HOST to send real email)'}; `
       + `reminders at ${settings.reminderHour}:00 ${settings.timezone} the day before collection`);

@@ -1035,8 +1035,9 @@ $('#chat-form').addEventListener('submit', (e) => {
 });
 $('#chat-suggestions').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') sendChat(e.target.textContent); });
 
-fetch('/api/version').then((r) => r.json()).then(({ version }) => {
+fetch('/api/version').then((r) => r.json()).then(({ version, demoPassword }) => {
   $$('.version').forEach((el) => { el.textContent = `v${version}`; });
+  $('#demo-password').textContent = demoPassword ?? 'the one chosen when the site was set up';
 }).catch(() => {});
 
 boot();
