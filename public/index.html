@@ -95,13 +95,33 @@
 
         <div id="tab-aorders" class="tab-panel hidden">
           <div class="toolbar">
-            <select id="order-filter">
-              <option value="">All statuses</option>
-              <option>pending</option><option>processing</option><option>ready</option>
-              <option>collected</option><option>cancelled</option>
-            </select>
+            <label class="inline">Collection day <select id="order-day"></select></label>
+            <label class="inline">Show <select id="order-filter">
+              <option value="active">To do (not yet collected)</option>
+              <option value="pending">Pending</option><option value="processing">Processing</option>
+              <option value="ready">Ready</option><option value="collected">Collected</option>
+              <option value="cancelled">Cancelled</option><option value="">All orders</option>
+            </select></label>
+            <input id="order-search" type="search" placeholder="Search name, email, order #" />
+            <button id="picklist-btn" class="btn">🖨 Pick list</button>
           </div>
-          <div id="admin-orders"></div>
+          <details class="card howto">
+            <summary><strong>How to process a collection day</strong> <span class="muted small">(no need to update orders one by one)</span></summary>
+            <ol>
+              <li><strong>Cut-off:</strong> pick the collection day, tick the box at the top of the table to select all, then <em>Mark processing</em>. Staff can no longer cancel those orders.</li>
+              <li><strong>Prepare:</strong> open the <em>Pick list</em>. It has the total of each item to pull from storage and a packing list per person. Print it and pack.</li>
+              <li><strong>Ready:</strong> select all again and click <em>Mark ready</em>.</li>
+              <li><strong>Collection day:</strong> search for each person as they arrive and click <em>✓ Collected</em>.</li>
+            </ol>
+          </details>
+          <div id="order-summary" class="pills"></div>
+          <table class="table orders-table">
+            <thead><tr>
+              <th class="check"><input type="checkbox" id="order-select-all" aria-label="Select all shown orders" /></th>
+              <th>Order</th><th>Staff</th><th>Items</th><th class="num">Tokens</th><th>Collection</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="admin-orders"></tbody>
+          </table>
         </div>
 
         <div id="tab-adays" class="tab-panel hidden">
@@ -236,6 +256,25 @@
         <button class="btn primary" type="submit">Send</button>
       </form>
     </aside>
+  </div>
+
+  <div id="order-bar" class="save-bar hidden" aria-label="Bulk actions">
+    <span id="order-selected"></span>
+    <button class="btn" data-bulk="processing">Mark processing</button>
+    <button class="btn primary" data-bulk="ready">Mark ready</button>
+    <button class="btn" data-bulk="collected">Mark collected</button>
+    <select id="bulk-move" aria-label="Move selected orders to another collection day"></select>
+    <button id="order-clear" class="btn ghost">Clear</button>
+  </div>
+
+  <div id="picklist" class="modal hidden">
+    <div class="modal-box card picklist-box">
+      <div class="row between no-print">
+        <strong>Pick list</strong>
+        <span class="row"><button id="picklist-print-btn" class="btn primary">🖨 Print</button><button id="picklist-close" class="btn ghost">✕</button></span>
+      </div>
+      <div id="picklist-print"></div>
+    </div>
   </div>
 
   <div id="email-preview" class="modal hidden">

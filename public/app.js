@@ -105,7 +105,7 @@ function route() {
   $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
   VIEWS[view]();
 }
-window.addEventListener('hashchange', () => { showSaveBar(false); if (state.user) route(); });
+window.addEventListener('hashchange', () => { $$('.save-bar').forEach((b) => setBar(b.id, false)); if (state.user) route(); });
 
 // ---------- Shop ----------
 async function loadProducts() {
@@ -233,22 +233,11 @@ function collectionInfo(o) {
 
 let collectionDays = [];
 
-function orderCard(o, { admin = false } = {}) {
-  const daySelect = admin && ACTIVE.includes(o.status)
-    ? `<label class="inline">Collection
-         <select data-day="${o.id}">
-           <option value="">To be confirmed</option>
-           ${collectionDays.map((d) => `<option value="${d.id}" ${d.id === o.collection_day_id ? 'selected' : ''}>${fmtDay(d.date)} · ${esc(d.location)}</option>`).join('')}
-         </select></label>`
-    : '';
-  const actions = admin
-    ? `<span class="row">${daySelect}<label class="inline">Status <select data-status="${o.id}" ${o.status === 'cancelled' ? 'disabled' : ''}>
-         ${['pending', 'processing', 'ready', 'collected', 'cancelled'].map((s) => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}
-       </select></label></span>`
-    : (o.status === 'pending' ? `<button class="btn danger sm" data-cancel="${o.id}">Cancel & refund</button>` : '');
+function orderCard(o) {
+  const actions = o.status === 'pending' ? `<button class="btn danger sm" data-cancel="${o.id}">Cancel & refund</button>` : '';
   return `<div class="card order">
     <div class="order-head">
-      <strong>Order #${o.id}${admin ? ` · ${esc(o.user_name)}` : ''}</strong>
+      <strong>Order #${o.id}</strong>
       <span class="status ${o.status}">${o.status}</span>
     </div>
     <div class="small muted">${fmtDate(o.created_at)}</div>
@@ -292,7 +281,7 @@ let adminTab = 'award';
 $$('.tab').forEach((t) => t.addEventListener('click', () => { adminTab = t.dataset.tab; renderAdmin(); }));
 
 function renderAdmin() {
-  showSaveBar(false);
+  $$('.save-bar').forEach((b) => setBar(b.id, false));
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === adminTab));
   $$('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.id !== `tab-${adminTab}`));
   ({
@@ -328,32 +317,191 @@ async function loadCollectionDays() {
   return r;
 }
 
-async function renderAdminOrders() {
-  const status = $('#order-filter').value;
-  const [orders] = await Promise.all([api(`/admin/orders${status ? `?status=${status}` : ''}`), loadCollectionDays()]);
-  $('#admin-orders').innerHTML = orders.length ? orders.map((o) => orderCard(o, { admin: true })).join('') : '<p class="muted">No orders.</p>';
+// Admin orders: filter by collection day, select many, and act on them together.
+const NEXT_STEP = {
+  pending: { status: 'processing', label: 'Start preparing' },
+  processing: { status: 'ready', label: 'Mark ready' },
+  ready: { status: 'collected', label: '✓ Collected' },
+};
+let adminOrders = [];
+let allCollectionDays = [];
+const selectedOrders = new Set();
+let orderDayChosen = false;
+
+function setBar(id, visible) {
+  $(`#${id}`).classList.toggle('hidden', !visible);
+  document.body.classList.toggle('has-save-bar', $$('.save-bar').some((b) => !b.classList.contains('hidden')));
 }
-$('#order-filter').addEventListener('change', renderAdminOrders);
-$('#admin-orders').addEventListener('change', async (e) => {
-  const dayOrder = e.target.dataset.day;
-  if (dayOrder) {
-    try {
-      await api(`/admin/orders/${dayOrder}/collection-day`, { method: 'PUT', body: { collectionDayId: e.target.value || null } });
-      toast(`Order #${dayOrder} rescheduled — staff member emailed`);
-    } catch (err) { toast(err.message); }
-    return renderAdminOrders();
+
+async function renderAdminOrders() {
+  const r = await loadCollectionDays();
+  allCollectionDays = r.days;
+  const daySel = $('#order-day');
+  if (!orderDayChosen) {
+    // Default to the next collection day — that's the batch the admin is working on.
+    daySel.dataset.value = collectionDays[0] ? String(collectionDays[0].id) : '';
+    orderDayChosen = true;
   }
-  const id = e.target.dataset.status;
-  if (!id) return;
-  const status = e.target.value;
-  if (status === 'cancelled' && !confirm(`Cancel order #${id} and refund the tokens?`)) return renderAdminOrders();
+  const current = daySel.dataset.value ?? '';
+  daySel.innerHTML = `<option value="">All days</option>
+    ${r.days.map((d) => `<option value="${d.id}">${fmtDay(d.date)} · ${esc(d.location)}${d.date < r.today ? ' (past)' : ''}</option>`).join('')}
+    <option value="none">Not scheduled yet</option>`;
+  daySel.value = [...daySel.options].some((o) => o.value === current) ? current : '';
+  daySel.dataset.value = daySel.value;
+  $('#bulk-move').innerHTML = `<option value="">Move to day…</option>
+    ${collectionDays.map((d) => `<option value="${d.id}">${fmtDay(d.date)} · ${esc(d.location)}</option>`).join('')}
+    <option value="none">Not scheduled</option>`;
+
+  const params = new URLSearchParams();
+  if ($('#order-filter').value) params.set('status', $('#order-filter').value);
+  if (daySel.value) params.set('day', daySel.value);
+  adminOrders = await api(`/admin/orders?${params}`);
+  for (const id of [...selectedOrders]) if (!adminOrders.some((o) => o.id === id)) selectedOrders.delete(id);
+  $('#picklist-btn').disabled = !daySel.value;
+  $('#picklist-btn').title = daySel.value ? '' : 'Choose a collection day first';
+  drawAdminOrders();
+}
+
+function visibleOrders() {
+  const q = $('#order-search').value.trim().toLowerCase().replace(/^#/, '');
+  if (!q) return adminOrders;
+  return adminOrders.filter((o) => String(o.id) === q
+    || o.user_name.toLowerCase().includes(q) || o.user_email.toLowerCase().includes(q));
+}
+
+function drawAdminOrders() {
+  const list = visibleOrders();
+  const counts = {};
+  for (const o of adminOrders) counts[o.status] = (counts[o.status] ?? 0) + 1;
+  $('#order-summary').innerHTML = adminOrders.length
+    ? `<span class="pill">${adminOrders.length} order${adminOrders.length > 1 ? 's' : ''}</span>`
+      + ['pending', 'processing', 'ready', 'collected', 'cancelled'].filter((st) => counts[st])
+        .map((st) => `<span class="status ${st}">${counts[st]} ${st}</span>`).join('')
+    : '';
+  $('#admin-orders').innerHTML = list.length ? list.map((o) => {
+    const next = NEXT_STEP[o.status];
+    const day = o.collection_date ? `${fmtDay(o.collection_date)}<div class="small muted">${esc(o.collection_location)}</div>` : '<span class="muted">Not scheduled</span>';
+    return `<tr class="${selectedOrders.has(o.id) ? 'selected' : ''}">
+      <td class="check">${o.status === 'cancelled' ? '' : `<input type="checkbox" data-select="${o.id}" ${selectedOrders.has(o.id) ? 'checked' : ''} aria-label="Select order ${o.id}" />`}</td>
+      <td><strong>#${o.id}</strong><div class="small muted">${fmtDate(o.created_at)}</div></td>
+      <td>${esc(o.user_name)}<div class="small muted">${esc(o.user_email)}</div></td>
+      <td class="items">${o.items.map((i) => `${i.quantity} × ${esc(i.product_name)}`).join('<br>')}</td>
+      <td class="num">${o.total}</td>
+      <td>${day}</td>
+      <td><span class="status ${o.status}">${o.status}</span></td>
+      <td><span class="row">
+        ${next ? `<button class="btn sm ${o.status === 'ready' ? 'primary' : ''}" data-next="${o.id}" data-to="${next.status}">${next.label}</button>` : ''}
+        ${ACTIVE.includes(o.status) ? `<button class="btn sm danger" data-cancel-order="${o.id}" title="Cancel and refund">Cancel</button>` : ''}
+      </span></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" class="muted">${adminOrders.length ? 'No orders match your search.' : 'No orders here.'}</td></tr>`;
+  const selectable = list.filter((o) => o.status !== 'cancelled');
+  const all = $('#order-select-all');
+  all.checked = selectable.length > 0 && selectable.every((o) => selectedOrders.has(o.id));
+  all.indeterminate = !all.checked && selectable.some((o) => selectedOrders.has(o.id));
+  updateOrderBar();
+}
+
+function updateOrderBar() {
+  const n = selectedOrders.size;
+  $('#order-selected').textContent = `${n} order${n === 1 ? '' : 's'} selected`;
+  setBar('order-bar', n > 0 && adminTab === 'aorders' && location.hash === '#admin');
+}
+
+function bulkMessage(r, what) {
+  const reasons = {};
+  for (const sk of r.skipped) reasons[sk.reason] = (reasons[sk.reason] ?? 0) + 1;
+  const skipped = Object.entries(reasons).map(([why, n]) => `${n} ${why}`).join(', ');
+  return `${r.updated.length} order${r.updated.length === 1 ? '' : 's'} ${what}${skipped ? ` · skipped: ${skipped}` : ''}`;
+}
+
+async function runBulk(body, what) {
   try {
-    await api(`/admin/orders/${id}/status`, { method: 'PUT', body: { status } });
-    toast(`Order #${id} → ${status}`);
-    if (status === 'cancelled') await loadProducts();
+    const r = await api('/admin/orders/bulk', { method: 'POST', body: { orderIds: [...selectedOrders], ...body } });
+    toast(bulkMessage(r, what));
+    selectedOrders.clear();
+  } catch (err) { toast(err.message); }
+  renderAdminOrders();
+}
+
+$('#order-day').addEventListener('change', (e) => { e.target.dataset.value = e.target.value; selectedOrders.clear(); renderAdminOrders(); });
+$('#order-filter').addEventListener('change', () => { selectedOrders.clear(); renderAdminOrders(); });
+$('#order-search').addEventListener('input', drawAdminOrders);
+$('#order-select-all').addEventListener('change', (e) => {
+  for (const o of visibleOrders()) {
+    if (o.status === 'cancelled') continue;
+    if (e.target.checked) selectedOrders.add(o.id); else selectedOrders.delete(o.id);
+  }
+  drawAdminOrders();
+});
+$('#admin-orders').addEventListener('change', (e) => {
+  const id = Number(e.target.dataset.select);
+  if (!id) return;
+  if (e.target.checked) selectedOrders.add(id); else selectedOrders.delete(id);
+  drawAdminOrders();
+});
+$('#admin-orders').addEventListener('click', async (e) => {
+  const { next, to, cancelOrder } = e.target.dataset;
+  try {
+    if (next) {
+      await api(`/admin/orders/${next}/status`, { method: 'PUT', body: { status: to } });
+      toast(`Order #${next} → ${to}`);
+    } else if (cancelOrder) {
+      if (!confirm(`Cancel order #${cancelOrder} and refund the tokens to the staff member?`)) return;
+      await api(`/admin/orders/${cancelOrder}/status`, { method: 'PUT', body: { status: 'cancelled' } });
+      toast(`Order #${cancelOrder} cancelled and refunded`);
+      await loadProducts();
+    } else return;
   } catch (err) { toast(err.message); }
   renderAdminOrders();
 });
+$('#order-bar').addEventListener('click', (e) => {
+  const status = e.target.dataset.bulk;
+  if (!status) return;
+  const n = selectedOrders.size;
+  if (status === 'collected' && !confirm(`Mark ${n} order${n === 1 ? '' : 's'} as collected?`)) return;
+  runBulk({ action: 'status', status }, `marked ${status}`);
+});
+$('#bulk-move').addEventListener('change', (e) => {
+  const v = e.target.value;
+  if (!v) return;
+  const n = selectedOrders.size;
+  const label = e.target.selectedOptions[0].textContent;
+  e.target.value = '';
+  if (!confirm(`Move ${n} order${n === 1 ? '' : 's'} to ${label}? Each staff member will be emailed the new details.`)) return;
+  runBulk({ action: 'move', collectionDayId: v === 'none' ? null : Number(v) }, 'moved — staff emailed');
+});
+$('#order-clear').addEventListener('click', () => { selectedOrders.clear(); drawAdminOrders(); });
+
+// Pick list for the chosen collection day
+$('#picklist-btn').addEventListener('click', async () => {
+  const day = $('#order-day').value;
+  if (!day) return toast('Choose a collection day first');
+  try {
+    const pl = await api(`/admin/pick-list?day=${encodeURIComponent(day)}`);
+    const title = pl.day
+      ? `${fmtDay(pl.day.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${esc(pl.day.start_time)}–${esc(pl.day.end_time)} · ${esc(pl.day.location)}`
+      : 'Orders not scheduled yet';
+    const units = pl.products.reduce((n, p) => n + p.quantity, 0);
+    $('#picklist-print').innerHTML = `
+      <h2>Collection: ${title}</h2>
+      <p class="muted">${pl.orders.length} orders · ${units} items · printed ${new Date().toLocaleString()}</p>
+      ${pl.orders.length ? `
+      <h3>1. Items to pull from storage</h3>
+      <table class="table"><thead><tr><th></th><th>Product</th><th class="num">Quantity</th><th class="num">Orders</th></tr></thead>
+        <tbody>${pl.products.map((p) => `<tr><td><span class="tick"></span></td><td>${esc(p.product_name)}</td><td class="num"><strong>${p.quantity}</strong></td><td class="num">${p.orders}</td></tr>`).join('')}</tbody></table>
+      <h3>2. Packing list (one bag per order)</h3>
+      <table class="table"><thead><tr><th>Packed</th><th>Collected</th><th>Order</th><th>Name</th><th>Items</th><th>Status</th></tr></thead>
+        <tbody>${pl.orders.map((o) => `<tr><td><span class="tick"></span></td><td><span class="tick"></span></td><td>#${o.id}</td>
+          <td>${esc(o.user_name)}<div class="small muted">${esc(o.user_email)}</div></td>
+          <td>${o.items.map((i) => `${i.quantity} × ${esc(i.product_name)}`).join('<br>')}</td><td>${o.status}</td></tr>`).join('')}</tbody></table>`
+      : '<p>No orders to prepare for this day.</p>'}`;
+    $('#picklist').classList.remove('hidden');
+  } catch (err) { toast(err.message); }
+});
+$('#picklist-close').addEventListener('click', () => $('#picklist').classList.add('hidden'));
+$('#picklist').addEventListener('click', (e) => { if (e.target.id === 'picklist') e.target.classList.add('hidden'); });
+$('#picklist-print-btn').addEventListener('click', () => window.print());
 
 let adminProducts = [];
 async function renderAdminProducts() {
@@ -378,8 +526,7 @@ function stockChanges() {
   });
 }
 function showSaveBar(visible) {
-  $('#stock-bar').classList.toggle('hidden', !visible);
-  document.body.classList.toggle('has-save-bar', visible); // lifts toasts above the bar
+  setBar('stock-bar', visible);
 }
 function updateStockDirty() {
   const n = stockChanges().length;

@@ -126,23 +126,51 @@ function deleteDay(db, id) {
 }
 
 // Move one order to a different collection day (or null to unschedule it) and email the owner.
+// Returns true if it moved. Must run inside a transaction.
+function moveOrder(db, orderId, dayId, today) {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  if (!order) throw new CollectionError('Order not found', 404);
+  if (!['pending', 'processing', 'ready'].includes(order.status)) {
+    throw new CollectionError(`Cannot change collection for a ${order.status} order`, 409);
+  }
+  const day = dayId == null ? null : getDay(db, dayId);
+  if (dayId != null && !day) throw new CollectionError('Collection day not found', 404);
+  if (day && day.date < today) throw new CollectionError('That collection day has already passed');
+  if ((order.collection_day_id ?? null) === (day?.id ?? null)) return false;
+  db.prepare("UPDATE orders SET collection_day_id = ?, reminder_sent_at = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(day?.id ?? null, reminderStamp(day, today), orderId);
+  queueOrderEmail(db, orderId, 'collection_updated');
+  return true;
+}
+
 function setOrderDay(db, orderId, dayId, { today = config.today() } = {}) {
+  return transaction(db, () => moveOrder(db, orderId, dayId, today));
+}
+
+// Move many orders at once; orders that can't move are skipped with a reason.
+function bulkSetOrderDay(db, orderIds, dayId, { today = config.today() } = {}) {
+  const ids = [...new Set((Array.isArray(orderIds) ? orderIds : []).map(Number))];
+  if (ids.length === 0 || ids.some((n) => !Number.isInteger(n))) throw new CollectionError('Select at least one order');
+  if (dayId != null) {
+    const day = getDay(db, dayId);
+    if (!day) throw new CollectionError('Collection day not found', 404);
+    if (day.date < today) throw new CollectionError('That collection day has already passed');
+  }
   return transaction(db, () => {
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-    if (!order) throw new CollectionError('Order not found', 404);
-    if (!['pending', 'processing', 'ready'].includes(order.status)) {
-      throw new CollectionError(`Cannot change collection for a ${order.status} order`, 409);
+    const result = { updated: [], skipped: [] };
+    for (const id of ids) {
+      try {
+        if (moveOrder(db, id, dayId, today)) result.updated.push(id);
+        else result.skipped.push({ id, reason: 'already on that day' });
+      } catch (err) {
+        if (!(err instanceof CollectionError)) throw err;
+        result.skipped.push({ id, reason: err.message });
+      }
     }
-    const day = dayId == null ? null : getDay(db, dayId);
-    if (dayId != null && !day) throw new CollectionError('Collection day not found', 404);
-    if (day && day.date < today) throw new CollectionError('That collection day has already passed');
-    if ((order.collection_day_id ?? null) === (day?.id ?? null)) return order;
-    db.prepare("UPDATE orders SET collection_day_id = ?, reminder_sent_at = ?, updated_at = datetime('now') WHERE id = ?")
-      .run(day?.id ?? null, reminderStamp(day, today), orderId);
-    queueOrderEmail(db, orderId, 'collection_updated');
+    return result;
   });
 }
 
 module.exports = {
-  CollectionError, getDay, listDays, nextDay, reminderStamp, createDay, updateDay, deleteDay, setOrderDay,
+  CollectionError, getDay, listDays, nextDay, reminderStamp, createDay, updateDay, deleteDay, setOrderDay, bulkSetOrderDay,
 };

@@ -156,15 +156,15 @@ function placeOrder(db, userId, items, { note = null, today = config.today() } =
   });
 }
 
+const ORDER_SELECT = `
+  SELECT o.*, u.name AS user_name, u.email AS user_email, u.department AS user_department,
+         d.date AS collection_date, d.start_time AS collection_start, d.end_time AS collection_end,
+         d.location AS collection_location, d.notes AS collection_notes
+    FROM orders o JOIN users u ON u.id = o.user_id
+    LEFT JOIN collection_days d ON d.id = o.collection_day_id`;
+
 function getOrder(db, orderId) {
-  const order = db.prepare(
-    `SELECT o.*, u.name AS user_name, u.email AS user_email,
-            d.date AS collection_date, d.start_time AS collection_start, d.end_time AS collection_end,
-            d.location AS collection_location, d.notes AS collection_notes
-       FROM orders o JOIN users u ON u.id = o.user_id
-       LEFT JOIN collection_days d ON d.id = o.collection_day_id
-      WHERE o.id = ?`
-  ).get(orderId);
+  const order = db.prepare(`${ORDER_SELECT} WHERE o.id = ?`).get(orderId);
   if (!order) return null;
   order.items = db.prepare(
     'SELECT product_id, product_name, unit_price, quantity FROM order_items WHERE order_id = ?'
@@ -172,13 +172,73 @@ function getOrder(db, orderId) {
   return order;
 }
 
-function listOrders(db, { userId = null, status = null } = {}) {
+// status: a single status, or 'active' for anything still to be collected.
+// collectionDayId: a day id, or 'none' for orders without a collection day.
+function listOrders(db, { userId = null, status = null, collectionDayId = null } = {}) {
   const where = [];
   const params = [];
-  if (userId != null) { where.push('user_id = ?'); params.push(userId); }
-  if (status) { where.push('status = ?'); params.push(status); }
-  const sql = `SELECT id FROM orders ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY id DESC`;
-  return db.prepare(sql).all(...params).map((r) => getOrder(db, r.id));
+  if (userId != null) { where.push('o.user_id = ?'); params.push(userId); }
+  if (status === 'active') where.push("o.status IN ('pending', 'processing', 'ready')");
+  else if (status) { where.push('o.status = ?'); params.push(status); }
+  if (collectionDayId === 'none') where.push('o.collection_day_id IS NULL');
+  else if (collectionDayId != null) { where.push('o.collection_day_id = ?'); params.push(Number(collectionDayId)); }
+
+  // Two queries (orders, then all their items) instead of one per order.
+  const orders = db.prepare(
+    `${ORDER_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY o.id DESC`
+  ).all(...params);
+  if (orders.length === 0) return orders;
+  const byId = new Map(orders.map((o) => [o.id, Object.assign(o, { items: [] })]));
+  const items = db.prepare(
+    `SELECT order_id, product_id, product_name, unit_price, quantity FROM order_items
+      WHERE order_id IN (${orders.map(() => '?').join(',')}) ORDER BY id`
+  ).all(...orders.map((o) => o.id));
+  for (const { order_id: orderId, ...item } of items) byId.get(orderId).items.push(item);
+  return orders;
+}
+
+// Change the status of many orders at once. Orders that can't change are skipped with a
+// reason rather than failing the whole batch. Cancelling (which refunds) stays one at a time.
+function bulkUpdateStatus(db, orderIds, status, adminId) {
+  if (!['pending', 'processing', 'ready', 'collected'].includes(status)) throw new StoreError('Invalid status');
+  const ids = [...new Set((Array.isArray(orderIds) ? orderIds : []).map(Number))];
+  if (ids.length === 0 || ids.some((n) => !Number.isInteger(n))) throw new StoreError('Select at least one order');
+  return transaction(db, () => {
+    const get = db.prepare('SELECT id, status FROM orders WHERE id = ?');
+    const update = db.prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?");
+    const result = { updated: [], skipped: [] };
+    for (const id of ids) {
+      const order = get.get(id);
+      if (!order) result.skipped.push({ id, reason: 'not found' });
+      else if (order.status === 'cancelled') result.skipped.push({ id, reason: 'cancelled' });
+      else if (order.status === status) result.skipped.push({ id, reason: `already ${status}` });
+      else { update.run(status, id); result.updated.push(id); }
+    }
+    return result;
+  });
+}
+
+// Everything needed to prepare a collection day: totals per product to pull from storage,
+// and a packing list per person. Only orders still to be collected are included.
+function pickList(db, collectionDayId) {
+  const orders = listOrders(db, { status: 'active', collectionDayId })
+    .sort((a, b) => a.user_name.localeCompare(b.user_name) || a.id - b.id);
+  const totals = new Map();
+  for (const o of orders) {
+    for (const i of o.items) {
+      const t = totals.get(i.product_id) ?? { product_id: i.product_id, product_name: i.product_name, quantity: 0, orders: 0 };
+      t.quantity += i.quantity;
+      t.orders += 1;
+      totals.set(i.product_id, t);
+    }
+  }
+  return {
+    day: collectionDayId === 'none' ? null : db.prepare('SELECT * FROM collection_days WHERE id = ?').get(Number(collectionDayId)) ?? null,
+    products: [...totals.values()].sort((a, b) => a.product_name.localeCompare(b.product_name)),
+    orders: orders.map((o) => ({
+      id: o.id, status: o.status, user_name: o.user_name, user_email: o.user_email, total: o.total, items: o.items,
+    })),
+  };
 }
 
 // Cancelling refunds the tokens and returns the stock.
@@ -252,7 +312,7 @@ module.exports = {
   StoreError, ORDER_STATUSES,
   getBalance, getLedger, awardTokens,
   listProducts, searchProducts, saveProduct,
-  placeOrder, getOrder, listOrders, cancelOrder, updateOrderStatus,
+  placeOrder, getOrder, listOrders, cancelOrder, updateOrderStatus, bulkUpdateStatus, pickList,
   listStaff,
   listFaqs, saveFaq, deleteFaq,
 };

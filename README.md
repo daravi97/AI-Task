@@ -12,7 +12,13 @@ A company merchandise store where staff spend **appreciation tokens** instead of
 
 **Admins**
 - **Award tokens** to one or many staff at once, with a required reason (e.g. "Shipped the Q3 release")
-- **Orders**: move orders through statuses; cancelling refunds the tokens and returns the stock
+- **Orders, processed in batches**: there's no approval step at checkout, because spending the tokens is the approval. The admin works one collection day at a time:
+  1. **Cut-off**: filter to the day, select all, then *Mark processing*. Staff can no longer cancel those orders.
+  2. **Pick list**: a printable sheet with the total of each product to pull from storage and a packing list per person.
+  3. **Ready**: select all, then *Mark ready*.
+  4. **Collection day**: search a name, email or order number as people arrive and click *✓ Collected*.
+
+  Bulk actions skip orders that can't change (e.g. cancelled ones) and report how many were skipped. Selected orders can also be moved to another collection day in one go, and each person is emailed. Cancelling an order (refund plus restock) stays a deliberate one-at-a-time action.
 - **Products**: add or edit items, set price, stock and an emoji icon, and hide items
 - **Bulk upload**: download the CSV template, fill in many products in Excel, and upload it. You get a preview first (new, updated, unchanged and error rows), then everything is saved together, or nothing if any row has an error. A row whose name matches an existing product updates it, and blank cells are left unchanged, so a sheet with just `name,stock` restocks items. Column names are flexible (e.g. `qty`, `price (tokens)`), and both comma- and semicolon-separated files work. The limit is 1,000 rows per upload.
 - **Bulk stock edit**: type new numbers into the Stock column of the product list and save them all with one click

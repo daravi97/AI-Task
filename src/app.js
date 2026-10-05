@@ -97,7 +97,25 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
     res.json(bulk.importProducts(db, req.body?.csv, { dryRun: req.body?.dryRun !== false }));
   });
   admin.put('/products-stock', (req, res) => res.json(bulk.setStockLevels(db, req.body?.updates)));
-  admin.get('/orders', (req, res) => res.json(store.listOrders(db, { status: req.query.status || null })));
+  admin.get('/orders', (req, res) => res.json(store.listOrders(db, {
+    status: req.query.status || null,
+    collectionDayId: req.query.day || null,
+  })));
+  // Bulk: { orderIds, action: 'status', status } or { orderIds, action: 'move', collectionDayId (null = unschedule) }
+  admin.post('/orders/bulk', (req, res) => {
+    const { orderIds, action, status, collectionDayId } = req.body ?? {};
+    let result;
+    if (action === 'status') result = store.bulkUpdateStatus(db, orderIds, status, req.user.id);
+    else if (action === 'move') {
+      result = collection.bulkSetOrderDay(db, orderIds, collectionDayId == null || collectionDayId === '' ? null : Number(collectionDayId));
+      email.kick();
+    } else return res.status(400).json({ error: 'Unknown bulk action' });
+    res.json(result);
+  });
+  admin.get('/pick-list', (req, res) => {
+    if (!req.query.day) return res.status(400).json({ error: 'Choose a collection day' });
+    res.json(store.pickList(db, req.query.day));
+  });
   admin.put('/orders/:id/status', (req, res) => {
     res.json(store.updateOrderStatus(db, id(req), req.body?.status, req.user.id));
     email.kick();
