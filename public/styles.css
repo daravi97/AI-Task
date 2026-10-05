@@ -96,6 +96,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 100px; }
 .order { margin-bottom: 12px; }
 .order-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .order ul { margin: 6px 0; padding-left: 18px; }
+.order select { width: auto; text-transform: capitalize; }
 .status { font-size: 0.8rem; padding: 2px 10px; border-radius: 999px; font-weight: 600; text-transform: capitalize; }
 .status.pending { background: #fef3c7; color: #92400e; }
 .status.processing { background: #dbeafe; color: #1e40af; }
