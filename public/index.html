@@ -4,17 +4,24 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Merch Store</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Login -->
   <section id="login-view" class="login hidden">
+    <div class="login-panel">
+      <div class="brand-mark big"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"></path></svg></div>
+      <h1>Merch Store <span class="version login-version"></span></h1>
+      <p>A thank-you for great work. Spend your appreciation tokens on company merchandise, then pick it up with your QR code.</p>
+    </div>
     <form id="login-form" class="card login-card">
-      <h1>🎁 Merch Store <span class="version login-version"></span></h1>
-      <p class="muted">Spend your appreciation tokens on company merchandise.</p>
+      <h2>Log in</h2>
       <label>Email <input name="email" type="email" required autocomplete="username" /></label>
       <label>Password <input name="password" type="password" required autocomplete="current-password" /></label>
-      <button type="submit" class="btn primary">Log in</button>
+      <button type="submit" class="btn primary big">Log in</button>
       <p id="login-error" class="error"></p>
       <details class="muted small">
         <summary>Demo accounts</summary>
@@ -28,40 +35,62 @@
   <!-- App shell -->
   <div id="app-view" class="hidden">
     <header class="topbar">
-      <div class="brand">🎁 Merch Store <span id="app-version" class="version"></span></div>
-      <nav id="nav">
-        <a href="#shop" data-view="shop">Shop</a>
-        <a href="#orders" data-view="orders">My Orders</a>
-        <a href="#wallet" data-view="wallet">My Wallet</a>
-        <a href="#checkin" data-view="checkin" class="admin-only hidden">Check-in</a>
-        <a href="#admin" data-view="admin" class="admin-only hidden">Admin</a>
-      </nav>
-      <div class="topbar-right">
-        <button id="cart-btn" class="btn ghost">🛒 <span id="cart-count">0</span></button>
-        <span class="balance-pill" title="Your token balance">🪙 <span id="balance">0</span></span>
-        <span id="user-name" class="muted"></span>
-        <button id="logout-btn" class="btn ghost">Log out</button>
+      <div class="topbar-inner">
+        <a href="#shop" class="brand"><span class="brand-mark"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"></path></svg></span><span class="brand-name">Merch Store</span> <span id="app-version" class="version"></span></a>
+        <nav id="nav" aria-label="Main">
+          <a href="#shop" data-view="shop">Shop</a>
+          <a href="#orders" data-view="orders">My orders</a>
+          <a href="#wallet" data-view="wallet">My wallet</a>
+          <a href="#checkin" data-view="checkin" class="admin-only hidden">Check-in</a>
+          <a href="#admin" data-view="admin" class="admin-only hidden">Admin</a>
+        </nav>
+        <div class="topbar-right">
+          <span class="balance-pill" title="Your token balance"><span class="coin"></span><strong id="balance">0</strong> <span class="balance-unit">tokens</span></span>
+          <button id="cart-btn" class="icon-btn" aria-label="Open cart">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+            <span id="cart-count" class="badge">0</span>
+          </button>
+          <span id="user-initials" class="avatar" aria-hidden="true"></span>
+          <span id="user-name" class="sr-only"></span>
+          <button id="logout-btn" class="icon-btn" aria-label="Log out" title="Log out"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg></button>
+        </div>
       </div>
     </header>
 
     <main>
       <section id="view-shop" class="view">
-        <div class="toolbar">
-          <h2>Shop</h2>
-          <input id="search" type="search" placeholder="Search merchandise…" />
-          <select id="category"><option value="">All categories</option></select>
+        <div class="shop-hero">
+          <div class="hero-panel">
+            <div class="eyebrow">Appreciation tokens</div>
+            <h1 id="hero-greeting">Thanks for the great work.</h1>
+            <p>You have <strong class="gold"><span id="hero-balance">0</span> tokens</strong> to spend on company merchandise. Pick something you'll love.</p>
+            <div id="hero-awards" class="awards"></div>
+          </div>
+          <div id="next-collection" class="card next-card"></div>
         </div>
+        <div class="section-head">
+          <div>
+            <h2>Shop</h2>
+            <div class="muted">Prices are in tokens. Stock updates live.</div>
+          </div>
+          <label class="search">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <span class="sr-only">Search merchandise</span>
+            <input id="search" type="search" placeholder="Search merchandise" />
+          </label>
+        </div>
+        <div id="category-chips" class="chips" role="group" aria-label="Category"></div>
         <div id="products" class="grid"></div>
       </section>
 
       <section id="view-orders" class="view hidden">
-        <h2>My Orders</h2>
+        <h2 class="page-title">My orders</h2>
         <div id="orders-list"></div>
       </section>
 
       <section id="view-wallet" class="view hidden">
-        <h2>My Wallet</h2>
-        <div class="card wallet-summary">Balance: <strong>🪙 <span id="wallet-balance">0</span> tokens</strong></div>
+        <h2 class="page-title">My wallet</h2>
+        <div class="wallet-summary"><div class="eyebrow">Balance</div><div class="wallet-amount"><span class="coin big"></span><span id="wallet-balance">0</span> <span class="balance-unit">tokens</span></div></div>
         <table class="table">
           <thead><tr><th>Date</th><th>Type</th><th>Details</th><th class="num">Tokens</th></tr></thead>
           <tbody id="ledger"></tbody>
@@ -69,11 +98,11 @@
       </section>
 
       <section id="view-checkin" class="view hidden">
-        <h2>Collection desk check-in</h2>
+        <h2 class="page-title">Collection desk check-in</h2>
         <form id="checkin-form" class="card checkin-form">
           <input id="checkin-input" placeholder="Scan the QR code, or type the pickup code (e.g. K7PX-9M2Q)" autocomplete="off" spellcheck="false" />
           <button class="btn primary" type="submit">Find order</button>
-          <button type="button" id="camera-btn" class="btn">📷 Scan with camera</button>
+          <button type="button" id="camera-btn" class="btn"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg> Scan with camera</button>
         </form>
         <label class="checkbox small muted"><input type="checkbox" id="auto-collect" /> Mark as collected straight away when a code is scanned (for long queues)</label>
         <div id="camera-box" class="card camera-box hidden">
@@ -128,7 +157,7 @@
               <option value="cancelled">Cancelled</option><option value="">All orders</option>
             </select></label>
             <input id="order-search" type="search" placeholder="Search name, email, order #" />
-            <button id="picklist-btn" class="btn">🖨 Pick list</button>
+            <button id="picklist-btn" class="btn dark"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Pick list</button>
           </div>
           <details class="card howto">
             <summary><strong>How to process a collection day</strong> <span class="muted small">(no need to update orders one by one)</span></summary>
@@ -253,10 +282,10 @@
 
     <!-- Cart drawer -->
     <aside id="cart" class="drawer hidden" aria-label="Cart">
-      <div class="drawer-head"><h3>Your cart</h3><button id="cart-close" class="btn ghost">✕</button></div>
+      <div class="drawer-head"><h3>Your cart</h3><button id="cart-close" class="btn ghost" aria-label="Close cart">✕</button></div>
       <div id="cart-items"></div>
       <div class="drawer-foot">
-        <div class="row between"><span>Total</span><strong>🪙 <span id="cart-total">0</span></strong></div>
+        <div class="row between"><span>Total</span><strong class="price"><span class="coin"></span><span id="cart-total">0</span></strong></div>
         <div class="row between muted small"><span>Balance after</span><span id="cart-after">0</span></div>
         <button id="checkout-btn" class="btn primary block">Checkout</button>
         <p id="cart-error" class="error"></p>
@@ -264,7 +293,7 @@
     </aside>
 
     <!-- Assistant bot -->
-    <button id="chat-toggle" class="chat-toggle" aria-label="Open assistant">💬</button>
+    <button id="chat-toggle" class="chat-toggle" aria-label="Ask Merch Bot"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Ask Merch Bot</span></button>
     <aside id="chat" class="chat hidden" aria-label="Assistant">
       <div class="chat-head">
         <div><strong>Merch Bot</strong><div class="small muted" id="chat-mode"></div></div>
@@ -296,7 +325,7 @@
     <div class="modal-box card picklist-box">
       <div class="row between no-print">
         <strong>Pick list</strong>
-        <span class="row"><button id="picklist-print-btn" class="btn primary">🖨 Print</button><button id="picklist-close" class="btn ghost">✕</button></span>
+        <span class="row"><button id="picklist-print-btn" class="btn primary"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Print</button><button id="picklist-close" class="btn ghost">✕</button></span>
       </div>
       <div id="picklist-print"></div>
     </div>

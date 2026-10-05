@@ -65,7 +65,13 @@ function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
   }));
 
   api.get('/me', requireUser, (req, res) => {
-    res.json({ user: req.user, balance: store.getBalance(db, req.user.id), assistantMode: assistant.mode });
+    res.json({
+      user: req.user,
+      balance: store.getBalance(db, req.user.id),
+      assistantMode: assistant.mode,
+      // The day a new order would be collected on, for the shop's header.
+      nextCollection: collection.nextDay(db, config.today()),
+    });
   });
 
   // ----- Staff -----

@@ -13,7 +13,9 @@ const fmtDay = (d, opts = { weekday: 'short', day: 'numeric', month: 'short', ye
 const ACTIVE = ['pending', 'processing', 'ready'];
 const fmtCode = (c) => (c ? `${c.slice(0, 4)}-${c.slice(4)}` : '');
 
-const state = { user: null, balance: 0, products: [], cart: loadCart(), chatHistory: [] };
+const state = { user: null, balance: 0, products: [], cart: loadCart(), chatHistory: [], category: '' };
+const coin = (cls = '') => `<span class="coin ${cls}" aria-hidden="true"></span>`;
+const initials = (name) => String(name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
 // ---------- API ----------
 async function api(path, { method = 'GET', body } = {}) {
@@ -42,7 +44,28 @@ function setBalance(n) {
   state.balance = n;
   $('#balance').textContent = n;
   $('#wallet-balance').textContent = n;
+  $('#hero-balance').textContent = n;
   renderCart();
+}
+
+// Shop header: greeting, latest awards and the next collection day.
+async function renderHero(me) {
+  $('#hero-greeting').textContent = `Thanks for the great work, ${me.user.name.split(' ')[0]}.`;
+  const d = me.nextCollection;
+  $('#next-collection').innerHTML = d
+    ? `<div class="next-label"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Next collection day</div>
+       <div class="next-date">${fmtDay(d.date, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+       <div class="muted">${esc(d.start_time)} – ${esc(d.end_time)} · ${esc(d.location)}</div>
+       <div class="next-tip">Orders placed now are collected on this day. You'll get a reminder email with your pickup QR code.</div>`
+    : `<div class="next-label">Next collection day</div>
+       <div class="next-date">To be announced</div>
+       <div class="next-tip">Order any time. We'll email you as soon as a collection day is set.</div>`;
+  try {
+    const { ledger } = await api('/wallet');
+    const awards = ledger.filter((l) => l.type === 'award').slice(0, 2);
+    $('#hero-awards').innerHTML = awards.map((a) => `<div class="award"><span class="award-amount">+${a.amount}</span>
+      <span>${esc(a.reason)}<br><span class="award-from">${a.awarded_by ? `from ${esc(a.awarded_by)} · ` : ''}${new Date(a.created_at.replace(' ', 'T') + 'Z').toLocaleDateString()}</span></span></div>`).join('');
+  } catch { /* the header still works without awards */ }
 }
 
 // ---------- Auth ----------
@@ -59,6 +82,8 @@ async function boot() {
     $('#login-view').classList.add('hidden');
     $('#app-view').classList.remove('hidden');
     $('#user-name').textContent = me.user.name;
+    $('#user-initials').textContent = initials(me.user.name);
+    $('#user-initials').title = me.user.name;
     $$('.admin-only').forEach((el) => el.classList.toggle('hidden', me.user.role !== 'admin'));
     $('#chat-mode').textContent = me.assistantMode === 'claude' ? 'AI assistant' : 'FAQ assistant';
     setBalance(me.balance);
@@ -66,6 +91,7 @@ async function boot() {
       addChat('bot', `Hi ${me.user.name.split(' ')[0]}! 👋 I can answer questions about tokens, orders and our merchandise.`);
     }
     await loadProducts();
+    renderHero(me);
     route();
   } catch {
     showLogin();
@@ -119,10 +145,9 @@ window.addEventListener('hashchange', () => { $$('.save-bar').forEach((b) => set
 async function loadProducts() {
   state.products = await api('/products');
   const cats = [...new Set(state.products.map((p) => p.category))].sort();
-  const sel = $('#category');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">All categories</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
-  sel.value = current;
+  if (state.category && !cats.includes(state.category)) state.category = '';
+  $('#category-chips').innerHTML = ['', ...cats].map((c) =>
+    `<button type="button" class="chip" data-cat="${esc(c)}" aria-pressed="${state.category === c}">${c ? esc(c) : 'All'}</button>`).join('');
   // Drop cart lines for products that no longer exist.
   state.cart = state.cart.filter((l) => state.products.some((p) => p.id === l.productId));
   renderCart();
@@ -130,26 +155,51 @@ async function loadProducts() {
 
 function renderShop() {
   const q = $('#search').value.trim().toLowerCase();
-  const cat = $('#category').value;
+  const cat = state.category;
+  const remaining = state.balance - cartTotal();
   const list = state.products.filter((p) =>
     (!cat || p.category === cat) && (!q || `${p.name} ${p.description} ${p.category}`.toLowerCase().includes(q)));
-  $('#products').innerHTML = list.length ? list.map((p) => `
-    <div class="card product">
-      <div class="icon">${esc(p.image)}</div>
-      <div class="row between"><span class="name">${esc(p.name)}</span><span class="tag">${esc(p.category)}</span></div>
-      <div class="desc">${esc(p.description)}</div>
-      <div class="meta">
-        <span class="price">🪙 ${p.price}</span>
-        <span class="small ${p.stock ? 'muted' : 'negative'}">${p.stock ? `${p.stock} in stock` : 'Out of stock'}</span>
+  $('#products').innerHTML = list.length ? list.map((p) => {
+    const inCart = state.cart.find((l) => l.productId === p.id)?.quantity ?? 0;
+    const soldOut = p.stock - inCart <= 0;
+    const short = p.price - remaining;
+    const button = p.stock === 0
+      ? '<button class="btn block" disabled>Out of stock</button>'
+      : soldOut
+        ? `<button class="btn block" disabled>All ${p.stock} in your cart</button>`
+        : short > 0
+          ? `<button class="btn block" disabled>Need ${short} more tokens</button>`
+          : `<button class="btn primary block" data-add="${p.id}">Add to cart</button>`;
+    return `<article class="product">
+      <div class="product-img">
+        <span class="product-icon" aria-hidden="true">${esc(p.image)}</span>
+        <span class="img-tag">${esc(p.category)}</span>
+        ${p.stock > 0 && p.stock <= 5 ? `<span class="img-tag low">Only ${p.stock} left</span>` : ''}
       </div>
-      <button class="btn primary" data-add="${p.id}" ${p.stock ? '' : 'disabled'}>Add to cart</button>
-    </div>`).join('') : '<p class="muted">No products match your search.</p>';
+      <div class="product-body">
+        <h3>${esc(p.name)}</h3>
+        <p class="muted">${esc(p.description)}</p>
+      </div>
+      <div class="product-meta">
+        <span class="price big">${coin()}${p.price}</span>
+        <span class="small muted">${p.stock ? `${p.stock} in stock` : 'Out of stock'}</span>
+      </div>
+      ${button}
+    </article>`;
+  }).join('') : '<p class="muted">No products match your search.</p>';
 }
 $('#search').addEventListener('input', renderShop);
-$('#category').addEventListener('change', renderShop);
+$('#category-chips').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  state.category = chip.dataset.cat;
+  $$('#category-chips .chip').forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+  renderShop();
+});
 $('#products').addEventListener('click', (e) => {
-  const id = Number(e.target.dataset.add);
-  if (!id) return;
+  const btn = e.target.closest('[data-add]');
+  if (!btn) return;
+  const id = Number(btn.dataset.add);
   const p = state.products.find((x) => x.id === id);
   const line = state.cart.find((l) => l.productId === id);
   if ((line?.quantity ?? 0) >= p.stock) return toast(`Only ${p.stock} in stock`);
@@ -165,6 +215,8 @@ function loadCart() {
 function saveCart() {
   try { localStorage.setItem('cart', JSON.stringify(state.cart)); } catch { /* storage unavailable */ }
   renderCart();
+  // Buttons show what's still affordable after the cart, so refresh them.
+  if (!$('#view-shop').classList.contains('hidden')) renderShop();
 }
 
 function cartTotal() {
@@ -172,7 +224,10 @@ function cartTotal() {
 }
 
 function renderCart() {
-  $('#cart-count').textContent = state.cart.reduce((n, l) => n + l.quantity, 0);
+  const count = state.cart.reduce((n, l) => n + l.quantity, 0);
+  $('#cart-count').textContent = count;
+  $('#cart-count').classList.toggle('hidden', count === 0);
+  $('#cart-btn').setAttribute('aria-label', `Open cart, ${count} item${count === 1 ? '' : 's'}`);
   const total = cartTotal();
   $('#cart-total').textContent = total;
   const after = state.balance - total;
@@ -184,8 +239,8 @@ function renderCart() {
     const p = state.products.find((x) => x.id === l.productId);
     if (!p) return '';
     return `<div class="cart-line">
-      <span style="font-size:1.6rem">${esc(p.image)}</span>
-      <div class="grow"><div>${esc(p.name)}</div><div class="small muted">🪙 ${p.price} each</div></div>
+      <span class="cart-icon">${esc(p.image)}</span>
+      <div class="grow"><div class="cart-name">${esc(p.name)}</div><div class="small muted">${coin('sm')}${p.price} each</div></div>
       <div class="qty">
         <button class="btn sm" data-dec="${p.id}">−</button><span>${l.quantity}</span><button class="btn sm" data-inc="${p.id}">+</button>
       </div>
@@ -218,7 +273,7 @@ $('#checkout-btn').addEventListener('click', async () => {
     saveCart();
     setBalance(balance);
     $('#cart').classList.add('hidden');
-    toast(`Order #${order.id} placed! 🎉`);
+    toast(`Order #${order.id} placed. Check your email for the pickup QR code.`);
     await loadProducts();
     location.hash = '#orders';
     route();
@@ -229,36 +284,55 @@ $('#checkout-btn').addEventListener('click', async () => {
 });
 
 // ---------- Orders ----------
+const STEPS = [['pending', 'Placed'], ['processing', 'Packed'], ['ready', 'Ready'], ['collected', 'Collected']];
+
+function progress(o) {
+  if (o.status === 'cancelled') return '';
+  const at = STEPS.findIndex(([st]) => st === o.status);
+  return `<ol class="progress" aria-label="Order progress">${STEPS.map(([, label], i) =>
+    `<li class="${i <= at ? 'done' : ''}" ${i === at ? 'aria-current="step"' : ''}><span></span>${label}</li>`).join('')}</ol>`;
+}
+
+function dateTile(d) {
+  const [y, m, day] = d.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, day));
+  const f = (o) => dt.toLocaleDateString(undefined, { ...o, timeZone: 'UTC' }).toUpperCase();
+  return `<div class="date-tile" aria-hidden="true"><span>${f({ weekday: 'short' })}</span><strong>${day}</strong><span>${f({ month: 'short' })}</span></div>`;
+}
+
 function collectionInfo(o) {
   if (!ACTIVE.includes(o.status) && o.status !== 'collected') return '';
   if (!o.collection_date) {
-    return `<div class="collect tbc">📅 Collection date to be confirmed — you'll get an email once it's scheduled.</div>`;
+    return `<div class="collect tbc"><strong>Collection date to be confirmed.</strong> You'll get an email once it's scheduled.</div>`;
   }
   const label = o.status === 'collected' ? 'Collected on' : 'Collect on';
   const pickup = ACTIVE.includes(o.status) && o.pickup_code
-    ? `<div class="pickup"><img src="/api/orders/${o.id}/qr.svg" alt="Pickup QR code for order ${o.id}" loading="lazy" />
-        <div><div class="small muted">Show this at the collection desk</div>
+    ? `<div class="pickup"><div class="qr-frame"><img src="/api/orders/${o.id}/qr.svg" alt="Pickup QR code for order ${o.id}" loading="lazy" /></div>
+        <div><div class="pickup-title">Show this at the collection desk</div>
+        <div class="eyebrow">Pickup code</div>
         <div class="pickup-code">${esc(fmtCode(o.pickup_code))}</div>
         <div class="small muted">It's also in your confirmation and reminder emails.</div></div></div>`
     : '';
-  return pickup + `<div class="collect">📅 <strong>${label} ${fmtDay(o.collection_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>,
-    ${esc(o.collection_start)}–${esc(o.collection_end)}<br>📍 ${esc(o.collection_location)}${o.collection_notes ? ` <span class="muted">· ${esc(o.collection_notes)}</span>` : ''}</div>`;
+  return pickup + `<div class="collect">${dateTile(o.collection_date)}<div>
+    <div><span class="sr-only">${label} </span><strong>${fmtDay(o.collection_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong></div>
+    <div>${esc(o.collection_start)} – ${esc(o.collection_end)} · ${esc(o.collection_location)}</div>
+    ${o.collection_notes ? `<div class="collect-note">${esc(o.collection_notes)}</div>` : ''}</div></div>`;
 }
 
 let collectionDays = [];
 
 function orderCard(o) {
-  const actions = o.status === 'pending' ? `<button class="btn danger sm" data-cancel="${o.id}">Cancel & refund</button>` : '';
-  return `<div class="card order">
+  const actions = o.status === 'pending' ? `<button class="btn danger sm" data-cancel="${o.id}">Cancel &amp; refund</button>` : '';
+  return `<article class="card order">
     <div class="order-head">
-      <strong>Order #${o.id}</strong>
+      <div><h3>Order #${o.id}</h3><div class="small muted">${fmtDate(o.created_at)} · ${o.total} tokens</div></div>
       <span class="status ${o.status}">${o.status}</span>
     </div>
-    <div class="small muted">${fmtDate(o.created_at)}</div>
-    <ul>${o.items.map((i) => `<li>${i.quantity} × ${esc(i.product_name)} <span class="muted">(🪙 ${i.unit_price} each)</span></li>`).join('')}</ul>
+    ${progress(o)}
     ${collectionInfo(o)}
-    <div class="row between"><strong>🪙 ${o.total}</strong>${actions}</div>
-  </div>`;
+    <ul class="order-items">${o.items.map((i) => `<li><span>${i.quantity} × ${esc(i.product_name)}</span><strong>${i.unit_price * i.quantity}</strong></li>`).join('')}</ul>
+    <div class="row between"><strong class="price">${coin()}${o.total}</strong>${actions}</div>
+  </article>`;
 }
 
 async function renderOrders() {
