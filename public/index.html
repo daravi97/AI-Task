@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Merch Store</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Login -->
+  <section id="login-view" class="login hidden">
+    <form id="login-form" class="card login-card">
+      <h1>🎁 Merch Store</h1>
+      <p class="muted">Spend your appreciation tokens on company merchandise.</p>
+      <label>Email <input name="email" type="email" required autocomplete="username" /></label>
+      <label>Password <input name="password" type="password" required autocomplete="current-password" /></label>
+      <button type="submit" class="btn primary">Log in</button>
+      <p id="login-error" class="error"></p>
+      <details class="muted small">
+        <summary>Demo accounts</summary>
+        <p>Staff: <code>alice@company.com</code> / <code>password123</code><br />
+           Admin: <code>admin@company.com</code> / <code>password123</code></p>
+      </details>
+    </form>
+  </section>
+
+  <!-- App shell -->
+  <div id="app-view" class="hidden">
+    <header class="topbar">
+      <div class="brand">🎁 Merch Store</div>
+      <nav id="nav">
+        <a href="#shop" data-view="shop">Shop</a>
+        <a href="#orders" data-view="orders">My Orders</a>
+        <a href="#wallet" data-view="wallet">My Wallet</a>
+        <a href="#admin" data-view="admin" class="admin-only hidden">Admin</a>
+      </nav>
+      <div class="topbar-right">
+        <button id="cart-btn" class="btn ghost">🛒 <span id="cart-count">0</span></button>
+        <span class="balance-pill" title="Your token balance">🪙 <span id="balance">0</span></span>
+        <span id="user-name" class="muted"></span>
+        <button id="logout-btn" class="btn ghost">Log out</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="view-shop" class="view">
+        <div class="toolbar">
+          <h2>Shop</h2>
+          <input id="search" type="search" placeholder="Search merchandise…" />
+          <select id="category"><option value="">All categories</option></select>
+        </div>
+        <div id="products" class="grid"></div>
+      </section>
+
+      <section id="view-orders" class="view hidden">
+        <h2>My Orders</h2>
+        <div id="orders-list"></div>
+      </section>
+
+      <section id="view-wallet" class="view hidden">
+        <h2>My Wallet</h2>
+        <div class="card wallet-summary">Balance: <strong>🪙 <span id="wallet-balance">0</span> tokens</strong></div>
+        <table class="table">
+          <thead><tr><th>Date</th><th>Type</th><th>Details</th><th class="num">Tokens</th></tr></thead>
+          <tbody id="ledger"></tbody>
+        </table>
+      </section>
+
+      <section id="view-admin" class="view hidden">
+        <h2>Admin</h2>
+        <div class="tabs">
+          <button class="tab active" data-tab="award">Award tokens</button>
+          <button class="tab" data-tab="aorders">Orders</button>
+          <button class="tab" data-tab="aproducts">Products</button>
+          <button class="tab" data-tab="afaqs">FAQs</button>
+        </div>
+
+        <div id="tab-award" class="tab-panel">
+          <form id="award-form" class="card form">
+            <p class="muted">Recognise staff with appreciation tokens. Select one or more people.</p>
+            <div id="award-users" class="user-picker"></div>
+            <div class="row">
+              <label>Tokens <input name="amount" type="number" min="1" required /></label>
+              <label class="grow">Reason <input name="reason" required placeholder="e.g. Great job on the client launch" /></label>
+            </div>
+            <button class="btn primary" type="submit">Award tokens</button>
+          </form>
+          <table class="table">
+            <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Role</th><th class="num">Balance</th></tr></thead>
+            <tbody id="staff-table"></tbody>
+          </table>
+        </div>
+
+        <div id="tab-aorders" class="tab-panel hidden">
+          <div class="toolbar">
+            <select id="order-filter">
+              <option value="">All statuses</option>
+              <option>pending</option><option>processing</option><option>ready</option>
+              <option>collected</option><option>cancelled</option>
+            </select>
+          </div>
+          <div id="admin-orders"></div>
+        </div>
+
+        <div id="tab-aproducts" class="tab-panel hidden">
+          <form id="product-form" class="card form">
+            <input type="hidden" name="id" />
+            <div class="row">
+              <label>Icon <input name="image" maxlength="8" value="🎁" class="icon-input" /></label>
+              <label class="grow">Name <input name="name" required /></label>
+              <label>Category <input name="category" value="General" /></label>
+            </div>
+            <label>Description <input name="description" /></label>
+            <div class="row">
+              <label>Price (tokens) <input name="price" type="number" min="1" required /></label>
+              <label>Stock <input name="stock" type="number" min="0" value="0" required /></label>
+              <label class="checkbox"><input name="active" type="checkbox" checked /> Active</label>
+            </div>
+            <div class="row">
+              <button class="btn primary" type="submit">Save product</button>
+              <button class="btn ghost" type="reset">Clear</button>
+            </div>
+          </form>
+          <table class="table">
+            <thead><tr><th></th><th>Name</th><th>Category</th><th class="num">Price</th><th class="num">Stock</th><th>Status</th><th></th></tr></thead>
+            <tbody id="admin-products"></tbody>
+          </table>
+        </div>
+
+        <div id="tab-afaqs" class="tab-panel hidden">
+          <p class="muted">These FAQs are what the assistant bot uses to answer staff questions.</p>
+          <form id="faq-form" class="card form">
+            <input type="hidden" name="id" />
+            <label>Question <input name="question" required /></label>
+            <label>Answer <textarea name="answer" rows="3" required></textarea></label>
+            <label>Keywords <input name="keywords" placeholder="space separated, helps offline matching" /></label>
+            <div class="row">
+              <button class="btn primary" type="submit">Save FAQ</button>
+              <button class="btn ghost" type="reset">Clear</button>
+            </div>
+          </form>
+          <div id="admin-faqs"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Cart drawer -->
+    <aside id="cart" class="drawer hidden" aria-label="Cart">
+      <div class="drawer-head"><h3>Your cart</h3><button id="cart-close" class="btn ghost">✕</button></div>
+      <div id="cart-items"></div>
+      <div class="drawer-foot">
+        <div class="row between"><span>Total</span><strong>🪙 <span id="cart-total">0</span></strong></div>
+        <div class="row between muted small"><span>Balance after</span><span id="cart-after">0</span></div>
+        <button id="checkout-btn" class="btn primary block">Checkout</button>
+        <p id="cart-error" class="error"></p>
+      </div>
+    </aside>
+
+    <!-- Assistant bot -->
+    <button id="chat-toggle" class="chat-toggle" aria-label="Open assistant">💬</button>
+    <aside id="chat" class="chat hidden" aria-label="Assistant">
+      <div class="chat-head">
+        <div><strong>Merch Bot</strong><div class="small muted" id="chat-mode"></div></div>
+        <button id="chat-close" class="btn ghost">✕</button>
+      </div>
+      <div id="chat-log" class="chat-log"></div>
+      <div id="chat-suggestions" class="chat-suggestions">
+        <button>How many tokens do I have?</button>
+        <button>How do I collect my order?</button>
+        <button>Can I cancel an order?</button>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" placeholder="Ask a question…" autocomplete="off" maxlength="2000" />
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+    </aside>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
