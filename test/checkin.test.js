@@ -130,3 +130,54 @@ test('check-in API is admin-only; staff can only see their own QR code', async (
   const js = await fetch(`${base}/vendor/jsQR.js`);
   assert.equal(js.status, 200);
 });
+
+test('QR codes and email links follow the public address (tunnel) instead of localhost', async (t) => {
+  const config = require('../src/config');
+  const saved = { ...config.settings };
+  t.after(() => Object.assign(config.settings, saved));
+  Object.assign(config.settings, { appUrl: 'http://localhost:3000', appUrlFixed: false });
+  assert.equal(config.isLocalUrl('http://localhost:3000'), true);
+  assert.equal(config.isLocalUrl('http://127.0.0.1:3000/'), true);
+  assert.equal(config.isLocalUrl('https://laundry-rider-possibly-jaguar.trycloudflare.com'), false);
+
+  const { db } = setup();
+  const server = createApp({ db, assistant: createAssistant({ apiKey: '' }) }).listen(0);
+  await new Promise((r) => server.once('listening', r));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const tunnel = { Host: 'laundry-rider-possibly-jaguar.trycloudflare.com', 'X-Forwarded-Proto': 'https' };
+  // fetch() can't set Host, so send tunnel requests the way cloudflared does, with node:http.
+  const viaTunnel = (path, { method = 'GET', headers = {}, body } = {}) => new Promise((resolve, reject) => {
+    const req = require('node:http').request(`${base}${path}`, { method, headers: { ...tunnel, ...headers } }, (res) => {
+      let data = '';
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => resolve({ headers: res.headers, json: () => JSON.parse(data) }));
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
+
+  // Opening the site locally changes nothing.
+  await fetch(`${base}/api/version`);
+  assert.equal(config.settings.appUrl, 'http://localhost:3000');
+
+  // Opening it through the tunnel switches QR codes and email links to the tunnel address.
+  const login = await viaTunnel('/api/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'bob@company.com', password: 'password123' }),
+  });
+  assert.equal(config.settings.appUrl, 'https://laundry-rider-possibly-jaguar.trycloudflare.com');
+  const cookie = login.headers['set-cookie'][0].split(';')[0];
+  const placed = (await viaTunnel('/api/orders', {
+    method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: [{ productId: 1, quantity: 1 }] }),
+  })).json();
+  const email = db.prepare('SELECT * FROM email_outbox WHERE order_id = ? ORDER BY id DESC').get(placed.order.id);
+  assert.match(email.text, /https:\/\/laundry-rider-possibly-jaguar\.trycloudflare\.com\/#orders/);
+  assert.equal(qr.checkinUrl('K7PX9M2Q'), 'https://laundry-rider-possibly-jaguar.trycloudflare.com/#checkin/K7PX9M2Q');
+
+  // A real APP_URL is never overridden.
+  Object.assign(config.settings, { appUrl: 'https://merch.acme.com', appUrlFixed: true });
+  await viaTunnel('/api/version');
+  assert.equal(config.settings.appUrl, 'https://merch.acme.com');
+});

@@ -12,12 +12,31 @@ const COOKIE = 'sid';
 const { version: VERSION } = require('../package.json');
 
 // `email` is { mailer, kick() }: kick() asks the outbox worker to send queued emails now.
+// The address the browser used, e.g. https://abc.trycloudflare.com (proxies pass it in X-Forwarded-*).
+function requestOrigin(req) {
+  const host = String(req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+  return `${req.protocol}://${host}`;
+}
+
 function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
   const mailInfo = () => email.mailer?.info() ?? { mode: 'log' };
   const app = express();
   // Behind a tunnel or host (Cloudflare, Render…) the original https address arrives in X-Forwarded-* headers.
   app.set('trust proxy', true);
   app.use(express.json({ limit: '2mb' })); // large enough for a bulk product CSV
+
+  // Learn the public address (a Cloudflare tunnel, a Wi-Fi IP, a host) from incoming requests,
+  // so pickup QR codes and email links don't point at localhost, which phones can't open.
+  // An APP_URL set to a real address always wins.
+  app.use((req, _res, next) => {
+    const origin = requestOrigin(req);
+    const s = config.settings;
+    if (!s.appUrlFixed && !config.isLocalUrl(origin) && s.appUrl !== origin) {
+      s.appUrl = origin;
+      console.log(`[app] Reached at ${origin}: QR codes and email links now use this address`);
+    }
+    next();
+  });
   app.use(express.static(path.join(__dirname, '..', 'public')));
   // QR decoder for the check-in camera scanner (served locally, no CDN needed).
   app.get('/vendor/jsQR.js', (_req, res) => res.sendFile(require.resolve('jsqr/dist/jsQR.js')));
@@ -97,7 +116,7 @@ function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
     }
     // Without a configured APP_URL, point the QR at the address this page was opened from
     // (e.g. a phone on the same Wi-Fi or through a tunnel), so scanning it works.
-    const base = config.settings.appUrlFixed ? undefined : `${req.protocol}://${req.get('host')}`;
+    const base = config.settings.appUrlFixed ? undefined : requestOrigin(req);
     res.type('image/svg+xml').set('Cache-Control', 'private, max-age=3600').send(await qr.svg(order.pickup_code, base));
   });
   api.get('/faqs', requireUser, (_req, res) => res.json(store.listFaqs(db)));
