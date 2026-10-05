@@ -27,9 +27,9 @@ const { spawn } = require('node:child_process');
 const requestedPort = Number(process.env.PORT) || 3000;
 const db = openDb(process.env.DB_PATH || './data/store.db');
 const assistant = createAssistant();
-const mailer = createMailer();
+const mailer = createMailer(process.env, { db });
 const scheduler = startScheduler(db, mailer);
-const app = createApp({ db, assistant, email: { mode: mailer.mode, kick: scheduler.drain } });
+const app = createApp({ db, assistant, email: { mailer, kick: scheduler.drain } });
 
 // Open the site in the default browser (set OPEN_BROWSER=false to turn this off).
 function openBrowser(url) {
@@ -78,10 +78,12 @@ function listen(port, attemptsLeft = 10) {
     if (lan.length) console.log(`  On a phone on the same Wi-Fi: ${lan.join('  or  ')}`);
     console.log(`  Demo logins (password: ${process.env.SEED_PASSWORD ? 'your SEED_PASSWORD' : 'password123'}): alice@company.com, bob@company.com (staff), admin@company.com (admin)`);
     console.log(`  Assistant: ${assistant.mode === 'claude' ? 'Claude' : 'FAQ keyword matching (set ANTHROPIC_API_KEY for Claude)'}`);
-    console.log(`  Email: ${mailer.mode === 'smtp' ? `SMTP via ${process.env.SMTP_HOST}` : 'log only (set SMTP_HOST to send real email)'}; `
+    const mail = mailer.info();
+    const how = { smtp: `SMTP via ${mail.host}:${mail.port}`, ethereal: `Ethereal test inbox (${mail.inbox?.user})`, log: 'not sent (turn on a test inbox in Admin → Emails, or set SMTP_HOST)' };
+    console.log(`  Email: ${how[mail.mode]}; `
       + `reminders at ${settings.reminderHour}:00 ${settings.timezone} the day before collection`);
     console.log('');
-    if (mailer.verify) mailer.verify().catch((err) => console.error(`[email] SMTP connection check failed: ${err.message}`));
+    if (mailer.mode === 'smtp') mailer.verify().catch((err) => console.error(`[email] SMTP connection check failed: ${err.message}`));
     openBrowser(url);
   });
   server.once('error', async (err) => {

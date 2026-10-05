@@ -11,8 +11,9 @@ const qr = require('./qr');
 const COOKIE = 'sid';
 const { version: VERSION } = require('../package.json');
 
-// `email` is { mode: 'smtp' | 'log', kick() }: kick() asks the outbox worker to send queued emails now.
-function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
+// `email` is { mailer, kick() }: kick() asks the outbox worker to send queued emails now.
+function createApp({ db, assistant, email = { mailer: null, kick() {} } }) {
+  const mailInfo = () => email.mailer?.info() ?? { mode: 'log' };
   const app = express();
   // Behind a tunnel or host (Cloudflare, Render…) the original https address arrives in X-Forwarded-* headers.
   app.set('trust proxy', true);
@@ -167,9 +168,24 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
 
   // Email log
   admin.get('/emails', (_req, res) => res.json({
-    mode: email.mode, reminderHour: config.settings.reminderHour, timezone: config.settings.timezone,
+    ...mailInfo(),
+    canUseTestInbox: Boolean(email.mailer && !email.mailer.fixed),
+    // Render's free plan blocks the usual SMTP ports, which Ethereal needs.
+    hostBlocksSmtp: Boolean(process.env.RENDER),
+    reminderHour: config.settings.reminderHour, timezone: config.settings.timezone,
     emails: notifications.listEmails(db),
   }));
+  // Turn the free Ethereal test inbox on or off (only when SMTP isn't set in the server settings).
+  admin.post('/email/test-inbox', async (_req, res) => {
+    if (!email.mailer) return res.status(400).json({ error: 'Email is not available' });
+    try {
+      const info = await email.mailer.useTestInbox();
+      res.json(info);
+    } catch (err) {
+      res.status(502).json({ error: `Could not create a test inbox: ${err.message}` });
+    }
+  });
+  admin.delete('/email/test-inbox', (_req, res) => res.json(email.mailer ? email.mailer.stopTestInbox() : { mode: 'log' }));
   admin.get('/emails/:id', async (req, res) => {
     const e = notifications.getEmail(db, id(req));
     if (!e) return res.status(404).json({ error: 'Email not found' });

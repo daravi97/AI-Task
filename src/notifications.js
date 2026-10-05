@@ -9,33 +9,108 @@ const ACTIVE_STATUSES = "('pending', 'processing', 'ready')";
 
 // ---------- Transport ----------
 
-// Uses SMTP when SMTP_HOST is set; otherwise emails are only written to the log so
-// development and demos work without a mail server.
-function createMailer(env = process.env) {
-  const from = env.MAIL_FROM || 'Merch Store <no-reply@localhost>';
-  if (!env.SMTP_HOST) {
-    return {
-      mode: 'log',
-      from,
-      async send(msg) {
-        console.log(`[email:log] to=${msg.to} subject="${msg.subject}" (SMTP not configured, not delivered)`);
-        return { messageId: null };
+const ETHEREAL_LOGIN = 'https://ethereal.email/login';
+// Fail fast instead of hanging for minutes when a host blocks SMTP ports (e.g. Render's free plan).
+const TIMEOUTS = { connectionTimeout: 15_000, greetingTimeout: 10_000, socketTimeout: 30_000 };
+
+function smtpTransport({ host, port, secure, user, pass }) {
+  return nodemailer.createTransport({ host, port, secure, auth: user ? { user, pass } : undefined, ...TIMEOUTS });
+}
+
+// Three ways to send, switchable at runtime:
+//   smtp     – SMTP_HOST is set (your mail server, Mailtrap, Brevo, Gmail…)
+//   ethereal – a free fake inbox at ethereal.email; emails never reach real people. Turned on
+//              from Admin → Emails, or with SMTP_HOST=ethereal. The account is kept in the
+//              database so the same inbox is reused after a restart.
+//   log      – nothing configured: emails are only recorded in Admin → Emails.
+function createMailer(env = process.env, { db = null, etherealApi } = {}) {
+  const from = env.MAIL_FROM || 'Merch Store <no-reply@merch-store.local>';
+  const host = String(env.SMTP_HOST || '').trim();
+  const fixedSmtp = host && !['ethereal', 'none'].includes(host.toLowerCase());
+  let impl = null;
+
+  const logImpl = {
+    mode: 'log',
+    async send(msg) {
+      console.log(`[email:log] to=${msg.to} subject="${msg.subject}" (SMTP not configured, not delivered)`);
+      return { messageId: null };
+    },
+  };
+
+  function useAccount(account) {
+    const transport = smtpTransport({
+      host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, user: account.user, pass: account.pass,
+    });
+    impl = {
+      mode: 'ethereal',
+      account,
+      send: async (msg) => {
+        const info = await transport.sendMail({ from, ...msg });
+        return { ...info, previewUrl: nodemailer.getTestMessageUrl(info) || null };
       },
+      verify: () => transport.verify(),
     };
   }
-  const port = Number(env.SMTP_PORT || 587);
-  const transport = nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port,
-    secure: env.SMTP_SECURE ? env.SMTP_SECURE === 'true' : port === 465,
-    auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-  });
-  return {
-    mode: 'smtp',
-    from,
-    send: (msg) => transport.sendMail({ from, ...msg }),
-    verify: () => transport.verify(),
+
+  const savedAccount = () => {
+    if (!db) return null;
+    const row = db.prepare("SELECT value FROM app_settings WHERE key = 'ethereal_account'").get();
+    return row ? JSON.parse(row.value) : null;
   };
+
+  if (fixedSmtp) {
+    const port = Number(env.SMTP_PORT || 587);
+    const transport = smtpTransport({
+      host, port, secure: env.SMTP_SECURE ? env.SMTP_SECURE === 'true' : port === 465, user: env.SMTP_USER, pass: env.SMTP_PASS,
+    });
+    impl = { mode: 'smtp', host, port, send: (msg) => transport.sendMail({ from, ...msg }), verify: () => transport.verify() };
+  } else if (host.toLowerCase() !== 'none' && savedAccount()) {
+    useAccount(savedAccount());
+  } else {
+    impl = logImpl;
+  }
+
+  const manager = {
+    from,
+    get mode() { return impl.mode; },
+    // Configured through environment variables, so the admin screen can't switch it.
+    fixed: Boolean(fixedSmtp),
+    info() {
+      const base = { mode: impl.mode, from };
+      if (impl.mode === 'smtp') return { ...base, host: impl.host, port: impl.port };
+      if (impl.mode === 'ethereal') {
+        return { ...base, host: impl.account.smtp.host, inbox: { loginUrl: ETHEREAL_LOGIN, user: impl.account.user, pass: impl.account.pass } };
+      }
+      return base;
+    },
+    send: (msg) => impl.send(msg),
+    verify: () => (impl.verify ? impl.verify() : Promise.resolve(true)),
+
+    // Create (or reuse) a free Ethereal inbox and start sending to it.
+    async useTestInbox() {
+      if (fixedSmtp) throw new Error('SMTP is set in the server settings (SMTP_HOST), so the test inbox is not used');
+      const account = savedAccount() ?? await nodemailer.createTestAccount(etherealApi);
+      const keep = { user: account.user, pass: account.pass, smtp: account.smtp, web: account.web };
+      db?.prepare("INSERT INTO app_settings (key, value) VALUES ('ethereal_account', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(JSON.stringify(keep));
+      useAccount(keep);
+      return manager.info();
+    },
+    stopTestInbox() {
+      if (fixedSmtp) return manager.info();
+      db?.prepare("DELETE FROM app_settings WHERE key = 'ethereal_account'").run();
+      impl = logImpl;
+      return manager.info();
+    },
+  };
+
+  // SMTP_HOST=ethereal: set the test inbox up at start-up.
+  if (host.toLowerCase() === 'ethereal' && impl.mode !== 'ethereal') {
+    manager.useTestInbox()
+      .then((i) => console.log(`[email] Ethereal test inbox ready: log in at ${ETHEREAL_LOGIN} as ${i.inbox.user} / ${i.inbox.pass}`))
+      .catch((err) => console.error(`[email] Could not create an Ethereal test inbox: ${err.message}`));
+  }
+  return manager;
 }
 
 // ---------- Queueing ----------
@@ -83,7 +158,7 @@ async function processOutbox(db, mailer, { batchSize = 25, now = new Date() } = 
   let sent = 0;
   for (const email of due) {
     try {
-      await mailer.send({
+      const info = await mailer.send({
         to: email.to_name ? `"${email.to_name.replace(/"/g, '')}" <${email.to_email}>` : email.to_email,
         subject: email.subject,
         html: email.html,
@@ -91,8 +166,9 @@ async function processOutbox(db, mailer, { batchSize = 25, now = new Date() } = 
         attachments: await qrAttachments(db, email),
       });
       db.prepare(
-        "UPDATE email_outbox SET status = 'sent', attempts = attempts + 1, sent_at = datetime('now'), last_error = NULL WHERE id = ?"
-      ).run(email.id);
+        `UPDATE email_outbox SET status = 'sent', attempts = attempts + 1, sent_at = datetime('now'), last_error = NULL,
+                preview_url = ? WHERE id = ?`
+      ).run(info?.previewUrl ?? null, email.id);
       sent++;
     } catch (err) {
       const attempts = email.attempts + 1;
@@ -131,7 +207,7 @@ function retryEmail(db, id) {
 
 function listEmails(db, { limit = 100 } = {}) {
   return db.prepare(
-    `SELECT id, kind, to_email, to_name, subject, order_id, status, attempts, last_error, created_at, sent_at
+    `SELECT id, kind, to_email, to_name, subject, order_id, status, attempts, last_error, created_at, sent_at, preview_url
        FROM email_outbox ORDER BY id DESC LIMIT ?`
   ).all(limit);
 }

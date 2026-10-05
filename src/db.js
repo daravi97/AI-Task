@@ -104,7 +104,14 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   last_error TEXT,
   next_attempt_at TEXT NOT NULL,   -- ISO timestamp
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  sent_at TEXT
+  sent_at TEXT,
+  preview_url TEXT                 -- link to the delivered copy in a test inbox (Ethereal)
+);
+
+-- Small key/value store for settings changed from the admin screens (e.g. the test inbox).
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_ledger_user ON token_ledger(user_id);
@@ -188,6 +195,8 @@ function migrate(db) {
   if (!cols.includes('reminder_sent_at')) db.exec('ALTER TABLE orders ADD COLUMN reminder_sent_at TEXT');
   if (!cols.includes('pickup_code')) db.exec('ALTER TABLE orders ADD COLUMN pickup_code TEXT');
   if (!cols.includes('collected_at')) db.exec('ALTER TABLE orders ADD COLUMN collected_at TEXT');
+  const outboxCols = db.prepare('PRAGMA table_info(email_outbox)').all().map((c) => c.name);
+  if (!outboxCols.includes('preview_url')) db.exec('ALTER TABLE email_outbox ADD COLUMN preview_url TEXT');
   // Give orders placed before pickup codes existed a code of their own.
   const setCode = db.prepare('UPDATE orders SET pickup_code = ? WHERE id = ?');
   for (const { id } of db.prepare('SELECT id FROM orders WHERE pickup_code IS NULL').all()) setCode.run(newPickupCode(), id);

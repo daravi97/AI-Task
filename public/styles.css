@@ -115,6 +115,8 @@ tr.muted td { color: var(--muted); }
 .notice { margin-bottom: 16px; line-height: 1.5; }
 .notice.warn { border-color: var(--accent); }
 .notice.ok { border-color: var(--success); }
+.inbox-box { margin: 10px 0; padding: 10px 12px; border-radius: 8px; background: var(--bg); display: flex; flex-direction: column; gap: 6px; }
+code.copy { cursor: copy; user-select: all; }
 
 /* Bulk upload */
 .no-margin { margin: 0; }

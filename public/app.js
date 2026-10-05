@@ -773,10 +773,33 @@ const KIND_LABELS = {
 };
 async function renderEmails() {
   const r = await api('/admin/emails');
-  $('#email-mode').innerHTML = r.mode === 'smtp'
-    ? `✅ Sending through your SMTP server. Reminders go out from <strong>${r.reminderHour}:00</strong> (${esc(r.timezone)}) the day before collection.`
-    : `⚠️ <strong>SMTP is not configured</strong> — emails are recorded here but not delivered. Set <code>SMTP_HOST</code> (and related settings) to send real email. Reminders go out from ${r.reminderHour}:00 (${esc(r.timezone)}) the day before collection.`;
-  $('#email-mode').className = `card notice ${r.mode === 'smtp' ? 'ok' : 'warn'}`;
+  const when = `Reminders go out from <strong>${r.reminderHour}:00</strong> (${esc(r.timezone)}) the day before collection.`;
+  let html;
+  if (r.mode === 'smtp') {
+    const mailtrap = /mailtrap/i.test(r.host);
+    html = `✅ <strong>Sending through ${esc(r.host)}:${r.port}.</strong> ${when}
+      ${mailtrap ? '<br>This is a <strong>Mailtrap sandbox</strong>: emails are caught in your Mailtrap inbox and never reach real people. <a href="https://mailtrap.io/inboxes" target="_blank" rel="noopener">Open Mailtrap ↗</a>' : ''}`;
+  } else if (r.mode === 'ethereal') {
+    html = `✅ <strong>Sending to a free test inbox (Ethereal).</strong> Emails are delivered for real over SMTP but caught in the test inbox, so they never reach real people.
+      <div class="inbox-box">
+        <div><strong>Open the test inbox:</strong> <a href="${esc(r.inbox.loginUrl)}" target="_blank" rel="noopener">${esc(r.inbox.loginUrl)} ↗</a></div>
+        <div>Username <code class="copy" title="Click to copy">${esc(r.inbox.user)}</code></div>
+        <div>Password <code class="copy" title="Click to copy">${esc(r.inbox.pass)}</code></div>
+        <div class="small muted">Or click <em>📬 Delivered copy</em> next to any sent email below. Works on your phone too.</div>
+      </div>
+      ${when} <button id="test-inbox-off" class="btn sm ghost">Turn test inbox off</button>`;
+  } else {
+    html = `⚠️ <strong>Emails are not being sent</strong>. They're only recorded below. ${when}
+      ${r.canUseTestInbox && !r.hostBlocksSmtp ? `<div class="inbox-box">
+        <div><strong>Want to see real emails arrive?</strong> Use a free <strong>test inbox</strong> (Ethereal): no sign-up, and emails never reach real people.</div>
+        <div><button id="test-inbox-on" class="btn primary">📬 Use a free test inbox</button></div></div>` : ''}
+      ${r.hostBlocksSmtp ? `<div class="inbox-box"><div>This site runs on Render's free plan, which blocks the usual email ports.
+        For a test inbox use <strong>Mailtrap</strong> on port <strong>2525</strong>: set <code>SMTP_HOST=sandbox.smtp.mailtrap.io</code>, <code>SMTP_PORT=2525</code>,
+        <code>SMTP_USER</code> and <code>SMTP_PASS</code> in Render → Environment (see README).</div></div>` : ''}
+      ${!r.canUseTestInbox ? '' : '<div class="small muted">For real email, set <code>SMTP_HOST</code> and the related settings in <code>.env</code>.</div>'}`;
+  }
+  $('#email-mode').innerHTML = html;
+  $('#email-mode').className = `card notice ${r.mode === 'log' ? 'warn' : 'ok'}`;
   $('#emails-table').innerHTML = r.emails.length ? r.emails.map((m) => `<tr>
     <td class="small">${fmtDate(m.created_at)}</td>
     <td>${esc(m.to_name || '')}<div class="small muted">${esc(m.to_email)}</div></td>
@@ -784,9 +807,30 @@ async function renderEmails() {
     <td><span class="status ${m.status === 'sent' ? 'ready' : m.status === 'failed' ? 'cancelled' : 'pending'}">${m.status}</span>
       ${m.last_error ? `<div class="small negative">${esc(m.last_error)}</div>` : ''}</td>
     <td><span class="row"><button class="btn sm" data-preview="${m.id}">Preview</button>
+      ${m.preview_url ? `<a class="btn sm" href="${esc(m.preview_url)}" target="_blank" rel="noopener">📬 Delivered copy</a>` : ''}
       ${m.status === 'failed' ? `<button class="btn sm" data-retry="${m.id}">Retry</button>` : ''}</span></td>
   </tr>`).join('') : '<tr><td colspan="5" class="muted">No emails yet.</td></tr>';
 }
+$('#email-mode').addEventListener('click', async (e) => {
+  if (e.target.classList.contains('copy')) {
+    try { await navigator.clipboard.writeText(e.target.textContent); toast('Copied'); } catch { /* clipboard unavailable */ }
+    return;
+  }
+  if (e.target.id === 'test-inbox-on') {
+    e.target.disabled = true;
+    e.target.textContent = 'Creating inbox…';
+    try {
+      await api('/admin/email/test-inbox', { method: 'POST' });
+      toast('Test inbox ready. Emails will now be delivered there.');
+    } catch (err) { toast(err.message); }
+    renderEmails();
+  }
+  if (e.target.id === 'test-inbox-off') {
+    if (!confirm('Stop sending to the test inbox? Emails will only be recorded here.')) return;
+    await api('/admin/email/test-inbox', { method: 'DELETE' }).catch((err) => toast(err.message));
+    renderEmails();
+  }
+});
 $('#emails-table').addEventListener('click', async (e) => {
   const { preview, retry } = e.target.dataset;
   try {

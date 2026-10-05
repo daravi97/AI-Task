@@ -181,9 +181,84 @@ test('email HTML escapes user-controlled text', () => {
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('without SMTP settings the mailer only logs', async () => {
-  const mailer = notifications.createMailer({});
-  assert.equal(mailer.mode, 'log');
-  const smtp = notifications.createMailer({ SMTP_HOST: 'smtp.example.com', SMTP_PORT: '587' });
+test('mailer modes: log when nothing is set, smtp when SMTP_HOST is set', () => {
+  assert.equal(notifications.createMailer({}).mode, 'log');
+  assert.equal(notifications.createMailer({ SMTP_HOST: 'none' }).mode, 'log');
+  const smtp = notifications.createMailer({ SMTP_HOST: 'sandbox.smtp.mailtrap.io', SMTP_PORT: '2525' });
   assert.equal(smtp.mode, 'smtp');
+  assert.equal(smtp.fixed, true);
+  assert.deepEqual({ host: smtp.info().host, port: smtp.info().port }, { host: 'sandbox.smtp.mailtrap.io', port: 2525 });
+});
+
+// A tiny SMTP server that answers like Ethereal (the reply carries a message id).
+function fakeEtherealSmtp() {
+  const net = require('node:net');
+  const received = [];
+  const server = net.createServer((sock) => {
+    let data = false;
+    let buf = '';
+    sock.write('220 fake.ethereal ESMTP\r\n');
+    sock.on('data', (chunk) => {
+      buf += chunk;
+      let i;
+      while ((i = buf.indexOf('\r\n')) >= 0) {
+        const line = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        if (data) {
+          if (line === '.') { data = false; sock.write(`250 Accepted [STATUS=new MSGID=msg${received.length}]\r\n`); } else received[received.length - 1] += `${line}\n`;
+          continue;
+        }
+        const cmd = line.slice(0, 4).toUpperCase();
+        if (cmd === 'EHLO') sock.write('250-fake.ethereal\r\n250 AUTH PLAIN LOGIN\r\n');
+        else if (cmd === 'AUTH') sock.write('235 Authentication successful\r\n');
+        else if (cmd === 'DATA') { data = true; received.push(''); sock.write('354 End data with <CR><LF>.<CR><LF>\r\n'); } else if (cmd === 'QUIT') { sock.end('221 Bye\r\n'); } else sock.write('250 OK\r\n');
+      }
+    });
+  });
+  return { server, received };
+}
+
+test('test inbox (Ethereal): one click creates an inbox, emails get a "delivered copy" link, and it survives restarts', async (t) => {
+  const http = require('node:http');
+  const smtp = fakeEtherealSmtp();
+  await new Promise((r) => smtp.server.listen(0, '127.0.0.1', r));
+  let created = 0;
+  const api = http.createServer((req, res) => {
+    created++;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({
+      status: 'success', user: 'demo.inbox@ethereal.email', pass: 'secret123', web: 'https://ethereal.email',
+      smtp: { host: '127.0.0.1', port: smtp.server.address().port, secure: false },
+    }));
+  });
+  await new Promise((r) => api.listen(0, '127.0.0.1', r));
+  t.after(() => { smtp.server.close(); api.close(); });
+  const etherealApi = `http://127.0.0.1:${api.address().port}`;
+
+  const db = openDb(':memory:');
+  const mailer = notifications.createMailer({}, { db, etherealApi });
+  assert.equal(mailer.mode, 'log');
+  const info = await mailer.useTestInbox();
+  assert.equal(info.mode, 'ethereal');
+  assert.deepEqual(info.inbox, { loginUrl: 'https://ethereal.email/login', user: 'demo.inbox@ethereal.email', pass: 'secret123' });
+
+  const alice = db.prepare("SELECT id FROM users WHERE email = 'alice@company.com'").get();
+  store.placeOrder(db, alice.id, [{ productId: 1, quantity: 1 }]);
+  assert.deepEqual(await notifications.processOutbox(db, mailer), { attempted: 1, sent: 1 });
+  const row = db.prepare('SELECT status, preview_url FROM email_outbox').get();
+  assert.equal(row.status, 'sent');
+  assert.equal(row.preview_url, 'https://ethereal.email/message/msg1');
+  assert.match(smtp.received[0], /Subject: =\?UTF-8\?Q\?Order_=23\d+_confirmed/);
+  assert.match(smtp.received[0], /Content-ID: <pickup-qr>/, 'QR code attached inline');
+
+  // A restart reuses the saved inbox instead of creating a new one.
+  const again = notifications.createMailer({}, { db, etherealApi });
+  assert.equal(again.mode, 'ethereal');
+  await again.useTestInbox();
+  assert.equal(created, 1);
+
+  assert.equal(again.stopTestInbox().mode, 'log');
+  assert.equal(notifications.createMailer({}, { db, etherealApi }).mode, 'log', 'turning it off is remembered');
+  assert.equal(notifications.createMailer({ SMTP_HOST: 'none' }, { db }).mode, 'log');
+  await assert.rejects(notifications.createMailer({ SMTP_HOST: 'smtp.example.com' }, { db }).useTestInbox(), /SMTP is set/);
 });

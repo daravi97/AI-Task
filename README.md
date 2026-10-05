@@ -40,7 +40,16 @@ A company merchandise store where staff spend **appreciation tokens** instead of
 
 - Emails are written to an **outbox table in the same database transaction** as the change, then a background worker sends them. Checkout never waits on the mail server, and a failed send is retried with backoff (up to 5 attempts).
 - The admin **Emails** tab shows every email with its status. From there an admin can preview it, retry failed ones, and send a test email to check the SMTP settings.
-- Without `SMTP_HOST`, emails are only recorded in the Emails tab and not delivered, which is handy for demos.
+- Without `SMTP_HOST`, emails are only recorded in the Emails tab and not delivered.
+
+**Showcasing email with a test inbox (no real people get emailed):**
+
+| Where | Test inbox | Setup |
+|---|---|---|
+| Your PC (`npm start`, `start.bat`, `phone.bat`) | [Ethereal](https://ethereal.email) | Admin → Emails → **📬 Use a free test inbox**. Nothing else. The app creates the inbox, shows its login, and adds a *📬 Delivered copy* link to every sent email. The inbox is remembered across restarts. You can also set `SMTP_HOST=ethereal`. |
+| Render (free plan) | [Mailtrap Email Sandbox](https://mailtrap.io) | Render's free plan blocks SMTP ports 25/465/587, so Ethereal can't be used there. Sign up free at mailtrap.io, open **Sandboxes → your sandbox → Integration → SMTP**, and copy the username and password. In Render → your service → **Environment**, add `SMTP_HOST=sandbox.smtp.mailtrap.io`, `SMTP_PORT=2525`, `SMTP_USER=…`, `SMTP_PASS=…`. Render redeploys, and every email then appears in your Mailtrap inbox. |
+
+For **real** delivery to real inboxes, use your company's SMTP server (e.g. Microsoft 365) on a host that allows SMTP, or a provider that accepts port 2525 (e.g. Brevo).
 
 **Assistant bot (💬 bottom-right)**
 - **With `ANTHROPIC_API_KEY` set:** it uses Claude (`claude-opus-5-5`). The FAQs go in its system prompt, and it has read-only tools to look up the user's balance, orders and the live catalog. It can't place orders or move tokens.
