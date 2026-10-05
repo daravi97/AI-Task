@@ -1,0 +1,495 @@
+- conRootCheckin:
+    Control: GroupContainer
+    Variant: verticalAutoLayoutContainer
+    Properties:
+      LayoutMode: =LayoutMode.Auto
+      LayoutDirection: =LayoutDirection.Vertical
+      LayoutGap: =0
+      LayoutAlignItems: =LayoutAlignItems.Stretch
+      DropShadow: =DropShadow.None
+      Fill: =clrBg
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+    Children:
+      - conHeaderCheckin:
+          Control: GroupContainer
+          Variant: horizontalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =8
+            LayoutAlignItems: =LayoutAlignItems.Center
+            DropShadow: =DropShadow.None
+            Fill: =clrBlack
+            Height: =64
+            PaddingLeft: =16
+            PaddingRight: =16
+          Children:
+            - lblBrandCheckin:
+                Control: Label
+                Properties:
+                  Text: ="Merch Store"
+                  Font: =Font.'Open Sans'
+                  Size: =15
+                  Color: =RGBA(255, 255, 255, 1)
+                  FontWeight: =FontWeight.Bold
+                  Width: =130
+                  Height: =40
+            - lblBrandDotCheckin:
+                Control: Label
+                Properties:
+                  Text: ="●"
+                  Font: =Font.'Open Sans'
+                  Size: =12
+                  Color: =clrGreen
+                  FontWeight: =FontWeight.Normal
+                  Width: =20
+                  Height: =40
+            - lblHeaderSpacerCheckin:
+                Control: Label
+                Properties:
+                  Text: =""
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  Color: =clrText
+                  FontWeight: =FontWeight.Normal
+                  FillPortions: =1
+                  Height: =40
+                  Width: =10
+            - btnBalanceCheckin:
+                Control: Button
+                Properties:
+                  Text: =Text(fxBalance) & " tokens"
+                  OnSelect: =Navigate(scrWallet, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Fill: =clrGreen
+                  Color: =clrBlack
+                  HoverFill: =ColorFade(clrGreen, -10%)
+                  PressedFill: =ColorFade(clrGreen, -20%)
+                  HoverColor: =clrBlack
+                  BorderColor: =clrGreen
+                  BorderThickness: =1
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =36
+                  RadiusTopLeft: =18
+                  RadiusTopRight: =18
+                  RadiusBottomLeft: =18
+                  RadiusBottomRight: =18
+                  Width: =130
+            - btnCartCheckin:
+                Control: Button
+                Properties:
+                  Text: ="Cart (" & Sum(colCart, Qty) & ")"
+                  OnSelect: =Navigate(scrCart, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Fill: =clrBlack
+                  Color: =RGBA(255, 255, 255, 1)
+                  HoverFill: =ColorFade(clrBlack, -10%)
+                  PressedFill: =ColorFade(clrBlack, -20%)
+                  HoverColor: =RGBA(255, 255, 255, 1)
+                  BorderColor: =RGBA(255, 255, 255, 0.4)
+                  BorderThickness: =1
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =36
+                  RadiusTopLeft: =10
+                  RadiusTopRight: =10
+                  RadiusBottomLeft: =10
+                  RadiusBottomRight: =10
+                  Width: =100
+      - conBodyCheckin:
+          Control: GroupContainer
+          Variant: verticalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            DropShadow: =DropShadow.None
+            Fill: =RGBA(0, 0, 0, 0)
+            FillPortions: =1
+            PaddingTop: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+          Children:
+            - lblCheckinTitle:
+                Control: Label
+                Properties:
+                  Text: ="Collection desk check-in"
+                  Font: =Font.'Open Sans'
+                  Size: =18
+                  Color: =clrText
+                  FontWeight: =FontWeight.Bold
+                  Height: =36
+            - conCheckinInput:
+                Control: GroupContainer
+                Variant: horizontalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  DropShadow: =DropShadow.None
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Height: =60
+                Children:
+                  - txtCheckinCode:
+                      Control: TextInput
+                      Properties:
+                        Default: =""
+                        HintText: ="Type or scan the pickup code, e.g. K7PX-9M2Q"
+                        Font: =Font.'Open Sans'
+                        Size: =13
+                        Height: =52
+                        FillPortions: =1
+                        BorderColor: =clrBorder
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                  - btnCheckinFind:
+                      Control: Button
+                      Properties:
+                        Text: ="Find order"
+                        OnSelect: |-
+                          =Set(varScanCode, txtCheckinCode.Text);
+                          Set(varScanned, LookUp(MS_Orders, PickupCode = Upper(Substitute(Trim(Last(Split(varScanCode, "code=")).Value), "-", ""))));
+                          Reset(txtCheckinCode)
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrDarkGreen
+                        Color: =RGBA(255, 255, 255, 1)
+                        HoverFill: =ColorFade(clrDarkGreen, -10%)
+                        PressedFill: =ColorFade(clrDarkGreen, -20%)
+                        HoverColor: =RGBA(255, 255, 255, 1)
+                        BorderColor: =clrDarkGreen
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =52
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        Width: =130
+            - lblCheckinHint:
+                Control: Label
+                Properties:
+                  Text: ="Scan with the Barcode reader button, a USB scanner (click in the box first), or a phone camera opening the QR link. No code? Search by name in Admin."
+                  Font: =Font.'Open Sans'
+                  Size: =10
+                  Color: =clrMuted
+                  FontWeight: =FontWeight.Normal
+                  Height: =44
+            - conCheckinResult:
+                Control: GroupContainer
+                Variant: verticalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: =clrSurface
+                  Visible: =!IsBlank(varScanCode)
+                  Height: =260
+                  PaddingTop: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  BorderColor: =Switch(If(IsBlank(varScanned) || varScanned.Status.Value in ["Collected", "Cancelled"], "stop", varScanned.Status.Value = "Ready", "ok", "warn"), "ok", clrDarkGreen, "warn", clrWarn, clrDanger)
+                  BorderThickness: =2
+                  RadiusTopLeft: =14
+                  RadiusTopRight: =14
+                  RadiusBottomLeft: =14
+                  RadiusBottomRight: =14
+                Children:
+                  - lblCheckinBanner:
+                      Control: Label
+                      Properties:
+                        Text: |-
+                          =If(IsBlank(varScanned), "No order has this pickup code. Check the code, or search by name in Admin.",
+                              Switch(varScanned.Status.Value,
+                                  "Ready", "Ready for collection",
+                                  "Collected", "Already collected" & If(IsBlank(varScanned.CollectedAt), "", " on " & Text(varScanned.CollectedAt, "d mmm, hh:mm")) & ". Do not hand it over again.",
+                                  "Cancelled", "Cancelled and refunded. Do not hand anything over.",
+                                  "Still " & varScanned.Status.Value & ", not marked ready. Check it has been packed."
+                              )
+                          )
+                        Font: =Font.'Open Sans'
+                        Size: =12
+                        Color: =Switch(If(IsBlank(varScanned) || varScanned.Status.Value in ["Collected", "Cancelled"], "stop", varScanned.Status.Value = "Ready", "ok", "warn"), "ok", clrDarkGreen, "warn", clrWarn, clrDanger)
+                        FontWeight: =FontWeight.Bold
+                        Fill: =Switch(If(IsBlank(varScanned) || varScanned.Status.Value in ["Collected", "Cancelled"], "stop", varScanned.Status.Value = "Ready", "ok", "warn"), "ok", clrSoftGreen, "warn", clrWarnSoft, clrDangerSoft)
+                        PaddingLeft: =12
+                        Height: =52
+                  - lblCheckinName:
+                      Control: Label
+                      Properties:
+                        Text: =varScanned.StaffName & " · " & varScanned.Title
+                        Font: =Font.'Open Sans'
+                        Size: =18
+                        Color: =clrText
+                        FontWeight: =FontWeight.Bold
+                        Height: =36
+                        Visible: =!IsBlank(varScanned)
+                  - lblCheckinItems:
+                      Control: Label
+                      Properties:
+                        Text: =varScanned.ItemsSummary
+                        Font: =Font.'Open Sans'
+                        Size: =14
+                        Color: =clrText
+                        FontWeight: =FontWeight.Normal
+                        Height: =56
+                        Visible: =!IsBlank(varScanned)
+                        VerticalAlign: =VerticalAlign.Top
+                  - lblCheckinWhen:
+                      Control: Label
+                      Properties:
+                        Text: |-
+                          ="Collection: " & If(IsBlank(varScanned.CollectionDate), "not scheduled", Text(varScanned.CollectionDate, "ddd d mmm yyyy") & " · " & varScanned.CollectionLocation)
+                        Font: =Font.'Open Sans'
+                        Size: =10
+                        Color: =clrMuted
+                        FontWeight: =FontWeight.Normal
+                        Height: =24
+                        Visible: =!IsBlank(varScanned)
+                  - btnCheckinCollect:
+                      Control: Button
+                      Properties:
+                        Text: =If(varScanned.Status.Value = "Ready", "Hand over & mark collected", "Mark collected anyway")
+                        OnSelect: |-
+                          =Set(varResult, MSUpdateOrders.Run("[" & Text(varScanned.ID) & "]", "Collected"));
+                          If(varResult.ok = "yes" && Value(varResult.updated) = 1,
+                              Collect(colCheckedIn, {Name: varScanned.StaffName, Items: varScanned.ItemsSummary, At: Now()});
+                              Refresh(MS_Orders);
+                              Set(varScanned, LookUp(MS_Orders, ID = varScanned.ID));
+                              Notify("Collected. Hand over the items.", NotificationType.Success),
+                              Notify(varResult.message, NotificationType.Error)
+                          )
+                        Font: =Font.'Open Sans'
+                        Size: =13
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =If(varScanned.Status.Value = "Ready", clrDarkGreen, clrSurface)
+                        Color: =If(varScanned.Status.Value = "Ready", RGBA(255, 255, 255, 1), clrText)
+                        HoverFill: =ColorFade(If(varScanned.Status.Value = "Ready", clrDarkGreen, clrSurface), -10%)
+                        PressedFill: =ColorFade(If(varScanned.Status.Value = "Ready", clrDarkGreen, clrSurface), -20%)
+                        HoverColor: =If(varScanned.Status.Value = "Ready", RGBA(255, 255, 255, 1), clrText)
+                        BorderColor: =If(varScanned.Status.Value = "Ready", clrDarkGreen, clrSurface)
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =56
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        Visible: =!IsBlank(varScanned) && varScanned.Status.Value in ["Pending", "Processing", "Ready"]
+            - lblCheckedInTitle:
+                Control: Label
+                Properties:
+                  Text: ="Checked in this session"
+                  Font: =Font.'Open Sans'
+                  Size: =12
+                  Color: =clrText
+                  FontWeight: =FontWeight.Bold
+                  Height: =28
+            - galCheckedIn:
+                Control: Gallery
+                Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                Properties:
+                  Items: =Sort(colCheckedIn, At, SortOrder.Descending)
+                  TemplateSize: =30
+                  TemplatePadding: =6
+                  ShowScrollbar: =false
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  FillPortions: =1
+                  LayoutMinHeight: =120
+                Children:
+                  - lblCheckedInRow:
+                      Control: Label
+                      Properties:
+                        Text: =Text(ThisItem.At, "hh:mm") & " · " & ThisItem.Name & " · " & ThisItem.Items
+                        Font: =Font.'Open Sans'
+                        Size: =10
+                        Color: =clrText
+                        FontWeight: =FontWeight.Normal
+                        X: =0
+                        Y: =0
+                        Width: =Parent.TemplateWidth
+                        Height: =28
+      - conNavCheckin:
+          Control: GroupContainer
+          Variant: horizontalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =0
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            DropShadow: =DropShadow.None
+            Fill: =clrSurface
+            Height: =56
+            BorderColor: =clrBorder
+            BorderThickness: =1
+          Children:
+            - btnNavShopCheckin:
+                Control: Button
+                Properties:
+                  Text: ="Shop"
+                  OnSelect: =Navigate(scrShop, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrShop, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrShop, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrShop, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrShop, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavOrdersCheckin:
+                Control: Button
+                Properties:
+                  Text: ="My orders"
+                  OnSelect: =Navigate(scrOrders, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrOrders, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrOrders, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrOrders, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrOrders, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavWalletCheckin:
+                Control: Button
+                Properties:
+                  Text: ="Wallet"
+                  OnSelect: =Navigate(scrWallet, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrWallet, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrWallet, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrWallet, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrWallet, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavHelpCheckin:
+                Control: Button
+                Properties:
+                  Text: ="Help"
+                  OnSelect: =Navigate(scrHelp, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrHelp, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrHelp, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrHelp, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrHelp, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavCheckinCheckin:
+                Control: Button
+                Properties:
+                  Text: ="Check-in"
+                  OnSelect: =Navigate(scrCheckin, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrCheckin, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrCheckin, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrCheckin, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrCheckin, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+                  Visible: =fxIsAdmin
+            - btnNavAdminCheckin:
+                Control: Button
+                Properties:
+                  Text: ="Admin"
+                  OnSelect: =Navigate(scrAdmin, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrAdmin, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrAdmin, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrAdmin, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrAdmin, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+                  Visible: =fxIsAdmin

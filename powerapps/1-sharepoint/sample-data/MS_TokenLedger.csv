@@ -1,0 +1,3 @@
+Title,StaffEmail,Amount,EntryType,OrderID,AwardedBy
+Welcome bonus,alice@yourcompany.com,300,Award,,Store Admin
+Welcome bonus,bob@yourcompany.com,200,Award,,Store Admin

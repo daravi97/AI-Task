@@ -1,0 +1,1118 @@
+- conRootAdmin:
+    Control: GroupContainer
+    Variant: verticalAutoLayoutContainer
+    Properties:
+      LayoutMode: =LayoutMode.Auto
+      LayoutDirection: =LayoutDirection.Vertical
+      LayoutGap: =0
+      LayoutAlignItems: =LayoutAlignItems.Stretch
+      DropShadow: =DropShadow.None
+      Fill: =clrBg
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+    Children:
+      - conHeaderAdmin:
+          Control: GroupContainer
+          Variant: horizontalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =8
+            LayoutAlignItems: =LayoutAlignItems.Center
+            DropShadow: =DropShadow.None
+            Fill: =clrBlack
+            Height: =64
+            PaddingLeft: =16
+            PaddingRight: =16
+          Children:
+            - lblBrandAdmin:
+                Control: Label
+                Properties:
+                  Text: ="Merch Store"
+                  Font: =Font.'Open Sans'
+                  Size: =15
+                  Color: =RGBA(255, 255, 255, 1)
+                  FontWeight: =FontWeight.Bold
+                  Width: =130
+                  Height: =40
+            - lblBrandDotAdmin:
+                Control: Label
+                Properties:
+                  Text: ="●"
+                  Font: =Font.'Open Sans'
+                  Size: =12
+                  Color: =clrGreen
+                  FontWeight: =FontWeight.Normal
+                  Width: =20
+                  Height: =40
+            - lblHeaderSpacerAdmin:
+                Control: Label
+                Properties:
+                  Text: =""
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  Color: =clrText
+                  FontWeight: =FontWeight.Normal
+                  FillPortions: =1
+                  Height: =40
+                  Width: =10
+            - btnBalanceAdmin:
+                Control: Button
+                Properties:
+                  Text: =Text(fxBalance) & " tokens"
+                  OnSelect: =Navigate(scrWallet, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Fill: =clrGreen
+                  Color: =clrBlack
+                  HoverFill: =ColorFade(clrGreen, -10%)
+                  PressedFill: =ColorFade(clrGreen, -20%)
+                  HoverColor: =clrBlack
+                  BorderColor: =clrGreen
+                  BorderThickness: =1
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =36
+                  RadiusTopLeft: =18
+                  RadiusTopRight: =18
+                  RadiusBottomLeft: =18
+                  RadiusBottomRight: =18
+                  Width: =130
+            - btnCartAdmin:
+                Control: Button
+                Properties:
+                  Text: ="Cart (" & Sum(colCart, Qty) & ")"
+                  OnSelect: =Navigate(scrCart, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Fill: =clrBlack
+                  Color: =RGBA(255, 255, 255, 1)
+                  HoverFill: =ColorFade(clrBlack, -10%)
+                  PressedFill: =ColorFade(clrBlack, -20%)
+                  HoverColor: =RGBA(255, 255, 255, 1)
+                  BorderColor: =RGBA(255, 255, 255, 0.4)
+                  BorderThickness: =1
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =36
+                  RadiusTopLeft: =10
+                  RadiusTopRight: =10
+                  RadiusBottomLeft: =10
+                  RadiusBottomRight: =10
+                  Width: =100
+      - conBodyAdmin:
+          Control: GroupContainer
+          Variant: verticalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            DropShadow: =DropShadow.None
+            Fill: =RGBA(0, 0, 0, 0)
+            FillPortions: =1
+            PaddingTop: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+          Children:
+            - lblAdminTitle:
+                Control: Label
+                Properties:
+                  Text: ="Admin"
+                  Font: =Font.'Open Sans'
+                  Size: =18
+                  Color: =clrText
+                  FontWeight: =FontWeight.Bold
+                  Height: =36
+            - conAdminTabs:
+                Control: GroupContainer
+                Variant: horizontalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =6
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  DropShadow: =DropShadow.None
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Height: =48
+                Children:
+                  - btnTabOrders:
+                      Control: Button
+                      Properties:
+                        Text: ="Orders"
+                        OnSelect: =Set(varAdminTab, "Orders")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =If(varAdminTab = "Orders", clrBlack, clrSurface)
+                        Color: =If(varAdminTab = "Orders", RGBA(255, 255, 255, 1), clrText)
+                        HoverFill: =ColorFade(If(varAdminTab = "Orders", clrBlack, clrSurface), -10%)
+                        PressedFill: =ColorFade(If(varAdminTab = "Orders", clrBlack, clrSurface), -20%)
+                        HoverColor: =If(varAdminTab = "Orders", RGBA(255, 255, 255, 1), clrText)
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =40
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        Width: =110
+                  - btnTabAward:
+                      Control: Button
+                      Properties:
+                        Text: ="Award tokens"
+                        OnSelect: =Set(varAdminTab, "Award")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =If(varAdminTab = "Award", clrBlack, clrSurface)
+                        Color: =If(varAdminTab = "Award", RGBA(255, 255, 255, 1), clrText)
+                        HoverFill: =ColorFade(If(varAdminTab = "Award", clrBlack, clrSurface), -10%)
+                        PressedFill: =ColorFade(If(varAdminTab = "Award", clrBlack, clrSurface), -20%)
+                        HoverColor: =If(varAdminTab = "Award", RGBA(255, 255, 255, 1), clrText)
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =40
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        Width: =140
+                  - btnTabLists:
+                      Control: Button
+                      Properties:
+                        Text: ="Products & days"
+                        OnSelect: =Set(varAdminTab, "Lists")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =If(varAdminTab = "Lists", clrBlack, clrSurface)
+                        Color: =If(varAdminTab = "Lists", RGBA(255, 255, 255, 1), clrText)
+                        HoverFill: =ColorFade(If(varAdminTab = "Lists", clrBlack, clrSurface), -10%)
+                        PressedFill: =ColorFade(If(varAdminTab = "Lists", clrBlack, clrSurface), -20%)
+                        HoverColor: =If(varAdminTab = "Lists", RGBA(255, 255, 255, 1), clrText)
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =40
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        Width: =160
+            - conAdminOrdersTab:
+                Control: GroupContainer
+                Variant: verticalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Visible: =varAdminTab = "Orders"
+                  FillPortions: =1
+                Children:
+                  - galAdminDays:
+                      Control: Gallery
+                      Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                      Properties:
+                        Items: |-
+                          =Ungroup(Table(
+                              {x: Table({ID: -1, Label: "Not scheduled"})},
+                              {x: ForAll(Sort(Filter(MS_CollectionDays, DayDate >= Today() - 7), DayDate, SortOrder.Ascending),
+                                  {ID: ID, Label: Text(DayDate, "ddd d mmm") & " · " & Title})}
+                          ), x)
+                        TemplateSize: =48
+                        TemplatePadding: =4
+                        ShowScrollbar: =false
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        WrapCount: =Max(1, RoundDown(Self.Width / 200, 0))
+                        Height: =100
+                      Children:
+                        - btnAdminDay:
+                            Control: Button
+                            Properties:
+                              Text: =ThisItem.Label
+                              OnSelect: =Set(varAdminDay, ThisItem.ID); Clear(colSelected)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =If(varAdminDay = ThisItem.ID, clrDarkGreen, clrSurface)
+                              Color: =If(varAdminDay = ThisItem.ID, RGBA(255, 255, 255, 1), clrText)
+                              HoverFill: =ColorFade(If(varAdminDay = ThisItem.ID, clrDarkGreen, clrSurface), -10%)
+                              PressedFill: =ColorFade(If(varAdminDay = ThisItem.ID, clrDarkGreen, clrSurface), -20%)
+                              HoverColor: =If(varAdminDay = ThisItem.ID, RGBA(255, 255, 255, 1), clrText)
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =40
+                              RadiusTopLeft: =20
+                              RadiusTopRight: =20
+                              RadiusBottomLeft: =20
+                              RadiusBottomRight: =20
+                              X: =0
+                              Y: =0
+                              Width: =Parent.TemplateWidth
+                  - conAdminStatus:
+                      Control: GroupContainer
+                      Variant: horizontalAutoLayoutContainer
+                      Properties:
+                        LayoutMode: =LayoutMode.Auto
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =6
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        DropShadow: =DropShadow.None
+                        Fill: =RGBA(0, 0, 0, 0)
+                        Height: =44
+                      Children:
+                        - btnStatusTodo:
+                            Control: Button
+                            Properties:
+                              Text: ="To do"
+                              OnSelect: =Set(varAdminStatus, "To do"); Clear(colSelected)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =If(varAdminStatus = "To do", clrSoftGreen, clrSurface)
+                              Color: =If(varAdminStatus = "To do", clrDarkGreen, clrMuted)
+                              HoverFill: =ColorFade(If(varAdminStatus = "To do", clrSoftGreen, clrSurface), -10%)
+                              PressedFill: =ColorFade(If(varAdminStatus = "To do", clrSoftGreen, clrSurface), -20%)
+                              HoverColor: =If(varAdminStatus = "To do", clrDarkGreen, clrMuted)
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =18
+                              RadiusTopRight: =18
+                              RadiusBottomLeft: =18
+                              RadiusBottomRight: =18
+                              Width: =110
+                        - btnStatusCollected:
+                            Control: Button
+                            Properties:
+                              Text: ="Collected"
+                              OnSelect: =Set(varAdminStatus, "Collected"); Clear(colSelected)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =If(varAdminStatus = "Collected", clrSoftGreen, clrSurface)
+                              Color: =If(varAdminStatus = "Collected", clrDarkGreen, clrMuted)
+                              HoverFill: =ColorFade(If(varAdminStatus = "Collected", clrSoftGreen, clrSurface), -10%)
+                              PressedFill: =ColorFade(If(varAdminStatus = "Collected", clrSoftGreen, clrSurface), -20%)
+                              HoverColor: =If(varAdminStatus = "Collected", clrDarkGreen, clrMuted)
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =18
+                              RadiusTopRight: =18
+                              RadiusBottomLeft: =18
+                              RadiusBottomRight: =18
+                              Width: =110
+                        - btnStatusAll:
+                            Control: Button
+                            Properties:
+                              Text: ="All"
+                              OnSelect: =Set(varAdminStatus, "All"); Clear(colSelected)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =If(varAdminStatus = "All", clrSoftGreen, clrSurface)
+                              Color: =If(varAdminStatus = "All", clrDarkGreen, clrMuted)
+                              HoverFill: =ColorFade(If(varAdminStatus = "All", clrSoftGreen, clrSurface), -10%)
+                              PressedFill: =ColorFade(If(varAdminStatus = "All", clrSoftGreen, clrSurface), -20%)
+                              HoverColor: =If(varAdminStatus = "All", clrDarkGreen, clrMuted)
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =18
+                              RadiusTopRight: =18
+                              RadiusBottomLeft: =18
+                              RadiusBottomRight: =18
+                              Width: =110
+                        - lblStatusSpacer:
+                            Control: Label
+                            Properties:
+                              Text: =""
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              Color: =clrText
+                              FontWeight: =FontWeight.Normal
+                              FillPortions: =1
+                              Height: =36
+                        - btnSelectAll:
+                            Control: Button
+                            Properties:
+                              Text: ="Select all"
+                              OnSelect: |-
+                                =ClearCollect(colSelected, ForAll(Filter(galAdminOrders.AllItems, Status.Value <> "Cancelled"), {ID: ID}))
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrSurface
+                              Color: =clrText
+                              HoverFill: =ColorFade(clrSurface, -10%)
+                              PressedFill: =ColorFade(clrSurface, -20%)
+                              HoverColor: =clrText
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =110
+                        - btnPickList:
+                            Control: Button
+                            Properties:
+                              Text: =If(varShowPickList, "Hide pick list", "Pick list")
+                              OnSelect: =Set(varShowPickList, !varShowPickList)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrBlack
+                              Color: =RGBA(255, 255, 255, 1)
+                              HoverFill: =ColorFade(clrBlack, -10%)
+                              PressedFill: =ColorFade(clrBlack, -20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              BorderColor: =clrBlack
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =130
+                  - conPickList:
+                      Control: GroupContainer
+                      Variant: verticalAutoLayoutContainer
+                      Properties:
+                        LayoutMode: =LayoutMode.Auto
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        DropShadow: =DropShadow.None
+                        Fill: =clrSurface
+                        Visible: =varShowPickList
+                        Height: =260
+                        PaddingTop: =12
+                        PaddingBottom: =12
+                        PaddingLeft: =16
+                        PaddingRight: =16
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        RadiusTopLeft: =12
+                        RadiusTopRight: =12
+                        RadiusBottomLeft: =12
+                        RadiusBottomRight: =12
+                      Children:
+                        - lblPickListTitle:
+                            Control: Label
+                            Properties:
+                              Text: |-
+                                ="Pick list: items to pull from storage (" & CountRows(galAdminOrders.AllItems) & " orders)"
+                              Font: =Font.'Open Sans'
+                              Size: =12
+                              Color: =clrText
+                              FontWeight: =FontWeight.Bold
+                              Height: =28
+                        - galPickList:
+                            Control: Gallery
+                            Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                            Properties:
+                              Items: =Sort(AddColumns(GroupBy(Filter(MS_OrderLines, OrderID in galAdminOrders.AllItems.ID), Title, Lines), Total, Sum(Lines, Qty)), Title)
+                              TemplateSize: =32
+                              TemplatePadding: =6
+                              ShowScrollbar: =false
+                              BorderThickness: =0
+                              Fill: =RGBA(0, 0, 0, 0)
+                              FillPortions: =1
+                              LayoutMinHeight: =120
+                            Children:
+                              - lblPickRow:
+                                  Control: Label
+                                  Properties:
+                                    Text: =ThisItem.Total & " × " & ThisItem.Title
+                                    Font: =Font.'Open Sans'
+                                    Size: =12
+                                    Color: =clrText
+                                    FontWeight: =FontWeight.Normal
+                                    X: =0
+                                    Y: =0
+                                    Width: =Parent.TemplateWidth
+                                    Height: =30
+                        - btnPrintPickList:
+                            Control: Button
+                            Properties:
+                              Text: ="Print"
+                              OnSelect: =Print()
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrBlack
+                              Color: =RGBA(255, 255, 255, 1)
+                              HoverFill: =ColorFade(clrBlack, -10%)
+                              PressedFill: =ColorFade(clrBlack, -20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              BorderColor: =clrBlack
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =40
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =120
+                  - galAdminOrders:
+                      Control: Gallery
+                      Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                      Properties:
+                        Items: |-
+                          =Sort(
+                              Switch(varAdminStatus,
+                                  "To do", Filter(MS_Orders, If(varAdminDay = -1, IsBlank(CollectionDayID), CollectionDayID = varAdminDay), Status.Value = "Pending" || Status.Value = "Processing" || Status.Value = "Ready"),
+                                  "Collected", Filter(MS_Orders, If(varAdminDay = -1, IsBlank(CollectionDayID), CollectionDayID = varAdminDay), Status.Value = "Collected"),
+                                  Filter(MS_Orders, If(varAdminDay = -1, IsBlank(CollectionDayID), CollectionDayID = varAdminDay))
+                              ),
+                              ID, SortOrder.Descending
+                          )
+                        TemplateSize: =76
+                        TemplatePadding: =6
+                        ShowScrollbar: =false
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        FillPortions: =1
+                        LayoutMinHeight: =240
+                      Children:
+                        - rectAdminOrder:
+                            Control: Rectangle
+                            Properties:
+                              Fill: =clrSurface
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              X: =0
+                              Y: =0
+                              Width: =Parent.TemplateWidth
+                              Height: =Parent.TemplateHeight
+                        - btnAdminSelect:
+                            Control: Button
+                            Properties:
+                              Text: =If(ThisItem.ID in colSelected.ID, "✓", "")
+                              OnSelect: |-
+                                =If(ThisItem.ID in colSelected.ID, Remove(colSelected, LookUp(colSelected, ID = ThisItem.ID)), Collect(colSelected, {ID: ThisItem.ID}))
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =If(ThisItem.ID in colSelected.ID, clrDarkGreen, clrSurface)
+                              Color: =RGBA(255, 255, 255, 1)
+                              HoverFill: =ColorFade(If(ThisItem.ID in colSelected.ID, clrDarkGreen, clrSurface), -10%)
+                              PressedFill: =ColorFade(If(ThisItem.ID in colSelected.ID, clrDarkGreen, clrSurface), -20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              BorderColor: =clrBorder
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              DisplayMode: =If(ThisItem.Status.Value = "Cancelled", DisplayMode.Disabled, DisplayMode.Edit)
+                              X: =12
+                              Y: =18
+                              Width: =36
+                        - lblAdminOrderNo:
+                            Control: Label
+                            Properties:
+                              Text: =ThisItem.Title & " · " & ThisItem.StaffName
+                              Font: =Font.'Open Sans'
+                              Size: =12
+                              Color: =clrText
+                              FontWeight: =FontWeight.Bold
+                              X: =60
+                              Y: =8
+                              Width: =Parent.TemplateWidth - 330
+                              Height: =26
+                        - lblAdminOrderItems:
+                            Control: Label
+                            Properties:
+                              Text: =ThisItem.ItemsSummary & " · " & ThisItem.Total & " tokens"
+                              Font: =Font.'Open Sans'
+                              Size: =10
+                              Color: =clrMuted
+                              FontWeight: =FontWeight.Normal
+                              X: =60
+                              Y: =34
+                              Width: =Parent.TemplateWidth - 330
+                              Height: =36
+                              VerticalAlign: =VerticalAlign.Top
+                        - lblAdminOrderStatus:
+                            Control: Label
+                            Properties:
+                              Text: =ThisItem.Status.Value
+                              Font: =Font.'Open Sans'
+                              Size: =10
+                              Color: =Switch(ThisItem.Status.Value, "Processing", clrBlue, "Ready", clrDarkGreen, "Cancelled", clrDanger, clrMuted)
+                              FontWeight: =FontWeight.Bold
+                              Fill: =Switch(ThisItem.Status.Value, "Processing", clrBlueSoft, "Ready", clrSoftGreen, "Cancelled", clrDangerSoft, clrBg)
+                              Align: =Align.Center
+                              X: =Parent.TemplateWidth - 262
+                              Y: =22
+                              Width: =100
+                              Height: =28
+                        - btnAdminNext:
+                            Control: Button
+                            Properties:
+                              Text: =Switch(ThisItem.Status.Value, "Pending", "Start preparing", "Processing", "Mark ready", "Ready", "Collected", "")
+                              OnSelect: |-
+                                =Set(varResult, MSUpdateOrders.Run("[" & ThisItem.ID & "]", Switch(ThisItem.Status.Value, "Pending", "Processing", "Processing", "Ready", "Ready", "Collected", "")));
+                                Notify(varResult.message, If(varResult.ok = "yes", NotificationType.Success, NotificationType.Error));
+                                Refresh(MS_Orders)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrDarkGreen
+                              Color: =RGBA(255, 255, 255, 1)
+                              HoverFill: =ColorFade(clrDarkGreen, -10%)
+                              PressedFill: =ColorFade(clrDarkGreen, -20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              BorderColor: =clrDarkGreen
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =36
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Visible: =Switch(ThisItem.Status.Value, "Pending", "Processing", "Processing", "Ready", "Ready", "Collected", "") <> ""
+                              X: =Parent.TemplateWidth - 152
+                              Y: =18
+                              Width: =140
+                  - conBulkBar:
+                      Control: GroupContainer
+                      Variant: horizontalAutoLayoutContainer
+                      Properties:
+                        LayoutMode: =LayoutMode.Auto
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =6
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        DropShadow: =DropShadow.None
+                        Fill: =clrBlack
+                        Visible: =CountRows(colSelected) > 0
+                        Height: =56
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        RadiusTopLeft: =12
+                        RadiusTopRight: =12
+                        RadiusBottomLeft: =12
+                        RadiusBottomRight: =12
+                      Children:
+                        - lblBulkCount:
+                            Control: Label
+                            Properties:
+                              Text: =CountRows(colSelected) & " selected"
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              Color: =RGBA(255, 255, 255, 1)
+                              FontWeight: =FontWeight.Bold
+                              Width: =110
+                              Height: =40
+                        - btnBulkProcessing:
+                            Control: Button
+                            Properties:
+                              Text: ="Mark processing"
+                              OnSelect: |-
+                                =Set(varResult, MSUpdateOrders.Run("[" & Concat(colSelected, Text(ID), ",") & "]", "Processing"));
+                                Notify(varResult.message, If(varResult.ok = "yes", NotificationType.Success, NotificationType.Error));
+                                Clear(colSelected);
+                                Refresh(MS_Orders)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrBlack
+                              Color: =RGBA(255, 255, 255, 1)
+                              HoverFill: =ColorFade(clrBlack, -10%)
+                              PressedFill: =ColorFade(clrBlack, -20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              BorderColor: =RGBA(255, 255, 255, 0.3)
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =40
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =150
+                        - btnBulkReady:
+                            Control: Button
+                            Properties:
+                              Text: ="Mark ready"
+                              OnSelect: |-
+                                =Set(varResult, MSUpdateOrders.Run("[" & Concat(colSelected, Text(ID), ",") & "]", "Ready"));
+                                Notify(varResult.message, If(varResult.ok = "yes", NotificationType.Success, NotificationType.Error));
+                                Clear(colSelected);
+                                Refresh(MS_Orders)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrGreen
+                              Color: =clrBlack
+                              HoverFill: =ColorFade(clrGreen, -10%)
+                              PressedFill: =ColorFade(clrGreen, -20%)
+                              HoverColor: =clrBlack
+                              BorderColor: =RGBA(255, 255, 255, 0.3)
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =40
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =150
+                        - btnBulkCollected:
+                            Control: Button
+                            Properties:
+                              Text: ="Mark collected"
+                              OnSelect: |-
+                                =Set(varResult, MSUpdateOrders.Run("[" & Concat(colSelected, Text(ID), ",") & "]", "Collected"));
+                                Notify(varResult.message, If(varResult.ok = "yes", NotificationType.Success, NotificationType.Error));
+                                Clear(colSelected);
+                                Refresh(MS_Orders)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrBlack
+                              Color: =RGBA(255, 255, 255, 1)
+                              HoverFill: =ColorFade(clrBlack, -10%)
+                              PressedFill: =ColorFade(clrBlack, -20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              BorderColor: =RGBA(255, 255, 255, 0.3)
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =40
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =150
+                        - btnBulkClear:
+                            Control: Button
+                            Properties:
+                              Text: ="Clear"
+                              OnSelect: =Clear(colSelected)
+                              Font: =Font.'Open Sans'
+                              Size: =11
+                              FontWeight: =FontWeight.Semibold
+                              Fill: =clrBlack
+                              Color: =RGBA(208, 208, 206, 1)
+                              HoverFill: =ColorFade(clrBlack, -10%)
+                              PressedFill: =ColorFade(clrBlack, -20%)
+                              HoverColor: =RGBA(208, 208, 206, 1)
+                              BorderColor: =clrBlack
+                              BorderThickness: =1
+                              DisabledFill: =clrBg
+                              DisabledColor: =clrMuted
+                              DisabledBorderColor: =clrBorder
+                              Height: =40
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              Width: =80
+            - conAdminAwardTab:
+                Control: GroupContainer
+                Variant: verticalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =10
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Visible: =varAdminTab = "Award"
+                  FillPortions: =1
+                Children:
+                  - lblAwardHelp:
+                      Control: Label
+                      Properties:
+                        Text: ="Recognise staff with appreciation tokens. Pick people in the box below (Combo box cmbPeople), then enter the amount and reason. Each person gets an email."
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        Color: =clrMuted
+                        FontWeight: =FontWeight.Normal
+                        Height: =48
+                  - txtAwardAmount:
+                      Control: TextInput
+                      Properties:
+                        Default: =""
+                        HintText: ="Tokens, e.g. 50"
+                        Format: =TextFormat.Number
+                        Font: =Font.'Open Sans'
+                        Size: =12
+                        Height: =44
+                        BorderColor: =clrBorder
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                  - txtAwardReason:
+                      Control: TextInput
+                      Properties:
+                        Default: =""
+                        HintText: ="Reason, e.g. Great job on the client launch"
+                        Font: =Font.'Open Sans'
+                        Size: =12
+                        Height: =44
+                        BorderColor: =clrBorder
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                  - btnAward:
+                      Control: Button
+                      Properties:
+                        Text: ="Award tokens"
+                        OnSelect: |-
+                          =Set(varResult, MSAwardTokens.Run(
+                              "[" & Concat(cmbPeople.SelectedItems, Char(34) & Lower(Mail) & Char(34), ",") & "]",
+                              Value(txtAwardAmount.Text),
+                              txtAwardReason.Text
+                          ));
+                          Notify(varResult.message, If(varResult.ok = "yes", NotificationType.Success, NotificationType.Error));
+                          If(varResult.ok = "yes", Reset(cmbPeople); Reset(txtAwardAmount); Reset(txtAwardReason))
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrDarkGreen
+                        Color: =RGBA(255, 255, 255, 1)
+                        HoverFill: =ColorFade(clrDarkGreen, -10%)
+                        PressedFill: =ColorFade(clrDarkGreen, -20%)
+                        HoverColor: =RGBA(255, 255, 255, 1)
+                        BorderColor: =clrDarkGreen
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =48
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        DisplayMode: =If(Value(txtAwardAmount.Text) > 0 && !IsBlank(Trim(txtAwardReason.Text)) && CountRows(cmbPeople.SelectedItems) > 0, DisplayMode.Edit, DisplayMode.Disabled)
+            - conAdminListsTab:
+                Control: GroupContainer
+                Variant: verticalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Visible: =varAdminTab = "Lists"
+                  FillPortions: =1
+                Children:
+                  - lblListsHelp:
+                      Control: Label
+                      Properties:
+                        Text: ="Products, stock and collection days are edited in SharePoint. Use Edit in grid view to paste many rows from Excel at once (bulk upload and restock)."
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        Color: =clrMuted
+                        FontWeight: =FontWeight.Normal
+                        Height: =48
+                  - btnOpenProducts:
+                      Control: Button
+                      Properties:
+                        Text: ="Open Products list"
+                        OnSelect: =Launch(fxSiteUrl & "/Lists/MS_Products/AllItems.aspx")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrSurface
+                        Color: =clrText
+                        HoverFill: =ColorFade(clrSurface, -10%)
+                        PressedFill: =ColorFade(clrSurface, -20%)
+                        HoverColor: =clrText
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =44
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                  - btnOpenDays:
+                      Control: Button
+                      Properties:
+                        Text: ="Open Collection days list"
+                        OnSelect: =Launch(fxSiteUrl & "/Lists/MS_CollectionDays/AllItems.aspx")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrSurface
+                        Color: =clrText
+                        HoverFill: =ColorFade(clrSurface, -10%)
+                        PressedFill: =ColorFade(clrSurface, -20%)
+                        HoverColor: =clrText
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =44
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                  - btnOpenFaqs:
+                      Control: Button
+                      Properties:
+                        Text: ="Open FAQs list"
+                        OnSelect: =Launch(fxSiteUrl & "/Lists/MS_FAQs/AllItems.aspx")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrSurface
+                        Color: =clrText
+                        HoverFill: =ColorFade(clrSurface, -10%)
+                        PressedFill: =ColorFade(clrSurface, -20%)
+                        HoverColor: =clrText
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =44
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                  - btnOpenAdmins:
+                      Control: Button
+                      Properties:
+                        Text: ="Open Admins list"
+                        OnSelect: =Launch(fxSiteUrl & "/Lists/MS_Admins/AllItems.aspx")
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrSurface
+                        Color: =clrText
+                        HoverFill: =ColorFade(clrSurface, -10%)
+                        PressedFill: =ColorFade(clrSurface, -20%)
+                        HoverColor: =clrText
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =44
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+      - conNavAdmin:
+          Control: GroupContainer
+          Variant: horizontalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =0
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            DropShadow: =DropShadow.None
+            Fill: =clrSurface
+            Height: =56
+            BorderColor: =clrBorder
+            BorderThickness: =1
+          Children:
+            - btnNavShopAdmin:
+                Control: Button
+                Properties:
+                  Text: ="Shop"
+                  OnSelect: =Navigate(scrShop, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrShop, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrShop, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrShop, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrShop, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavOrdersAdmin:
+                Control: Button
+                Properties:
+                  Text: ="My orders"
+                  OnSelect: =Navigate(scrOrders, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrOrders, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrOrders, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrOrders, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrOrders, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavWalletAdmin:
+                Control: Button
+                Properties:
+                  Text: ="Wallet"
+                  OnSelect: =Navigate(scrWallet, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrWallet, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrWallet, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrWallet, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrWallet, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavHelpAdmin:
+                Control: Button
+                Properties:
+                  Text: ="Help"
+                  OnSelect: =Navigate(scrHelp, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrHelp, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrHelp, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrHelp, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrHelp, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavCheckinAdmin:
+                Control: Button
+                Properties:
+                  Text: ="Check-in"
+                  OnSelect: =Navigate(scrCheckin, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrCheckin, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrCheckin, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrCheckin, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrCheckin, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+                  Visible: =fxIsAdmin
+            - btnNavAdminAdmin:
+                Control: Button
+                Properties:
+                  Text: ="Admin"
+                  OnSelect: =Navigate(scrAdmin, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrAdmin, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrAdmin, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrAdmin, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrAdmin, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+                  Visible: =fxIsAdmin

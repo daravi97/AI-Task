@@ -1,0 +1,528 @@
+- conRootShop:
+    Control: GroupContainer
+    Variant: verticalAutoLayoutContainer
+    Properties:
+      LayoutMode: =LayoutMode.Auto
+      LayoutDirection: =LayoutDirection.Vertical
+      LayoutGap: =0
+      LayoutAlignItems: =LayoutAlignItems.Stretch
+      DropShadow: =DropShadow.None
+      Fill: =clrBg
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+    Children:
+      - conHeaderShop:
+          Control: GroupContainer
+          Variant: horizontalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =8
+            LayoutAlignItems: =LayoutAlignItems.Center
+            DropShadow: =DropShadow.None
+            Fill: =clrBlack
+            Height: =64
+            PaddingLeft: =16
+            PaddingRight: =16
+          Children:
+            - lblBrandShop:
+                Control: Label
+                Properties:
+                  Text: ="Merch Store"
+                  Font: =Font.'Open Sans'
+                  Size: =15
+                  Color: =RGBA(255, 255, 255, 1)
+                  FontWeight: =FontWeight.Bold
+                  Width: =130
+                  Height: =40
+            - lblBrandDotShop:
+                Control: Label
+                Properties:
+                  Text: ="●"
+                  Font: =Font.'Open Sans'
+                  Size: =12
+                  Color: =clrGreen
+                  FontWeight: =FontWeight.Normal
+                  Width: =20
+                  Height: =40
+            - lblHeaderSpacerShop:
+                Control: Label
+                Properties:
+                  Text: =""
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  Color: =clrText
+                  FontWeight: =FontWeight.Normal
+                  FillPortions: =1
+                  Height: =40
+                  Width: =10
+            - btnBalanceShop:
+                Control: Button
+                Properties:
+                  Text: =Text(fxBalance) & " tokens"
+                  OnSelect: =Navigate(scrWallet, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Fill: =clrGreen
+                  Color: =clrBlack
+                  HoverFill: =ColorFade(clrGreen, -10%)
+                  PressedFill: =ColorFade(clrGreen, -20%)
+                  HoverColor: =clrBlack
+                  BorderColor: =clrGreen
+                  BorderThickness: =1
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =36
+                  RadiusTopLeft: =18
+                  RadiusTopRight: =18
+                  RadiusBottomLeft: =18
+                  RadiusBottomRight: =18
+                  Width: =130
+            - btnCartShop:
+                Control: Button
+                Properties:
+                  Text: ="Cart (" & Sum(colCart, Qty) & ")"
+                  OnSelect: =Navigate(scrCart, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Fill: =clrBlack
+                  Color: =RGBA(255, 255, 255, 1)
+                  HoverFill: =ColorFade(clrBlack, -10%)
+                  PressedFill: =ColorFade(clrBlack, -20%)
+                  HoverColor: =RGBA(255, 255, 255, 1)
+                  BorderColor: =RGBA(255, 255, 255, 0.4)
+                  BorderThickness: =1
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =36
+                  RadiusTopLeft: =10
+                  RadiusTopRight: =10
+                  RadiusBottomLeft: =10
+                  RadiusBottomRight: =10
+                  Width: =100
+      - conBodyShop:
+          Control: GroupContainer
+          Variant: verticalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            DropShadow: =DropShadow.None
+            Fill: =RGBA(0, 0, 0, 0)
+            FillPortions: =1
+            PaddingTop: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+          Children:
+            - conHero:
+                Control: GroupContainer
+                Variant: verticalAutoLayoutContainer
+                Properties:
+                  LayoutMode: =LayoutMode.Auto
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =4
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: =clrBlack
+                  Height: =140
+                  PaddingTop: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =20
+                  PaddingRight: =20
+                  RadiusTopLeft: =16
+                  RadiusTopRight: =16
+                  RadiusBottomLeft: =16
+                  RadiusBottomRight: =16
+                Children:
+                  - lblHeroEyebrow:
+                      Control: Label
+                      Properties:
+                        Text: ="APPRECIATION TOKENS"
+                        Font: =Font.'Open Sans'
+                        Size: =9
+                        Color: =clrGreen
+                        FontWeight: =FontWeight.Bold
+                        Height: =20
+                  - lblHeroTitle:
+                      Control: Label
+                      Properties:
+                        Text: ="Thanks for the great work, " & fxFirstName & "."
+                        Font: =Font.'Open Sans'
+                        Size: =18
+                        Color: =RGBA(255, 255, 255, 1)
+                        FontWeight: =FontWeight.Bold
+                        Height: =36
+                  - lblHeroText:
+                      Control: Label
+                      Properties:
+                        Text: |-
+                          ="You have " & fxBalance & " tokens to spend. Next collection: " & If(IsBlank(fxNextDay), "to be announced", Text(fxNextDay.DayDate, "dddd d mmmm") & " · " & fxNextDay.Title)
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        Color: =RGBA(208, 208, 206, 1)
+                        FontWeight: =FontWeight.Normal
+                        Height: =44
+            - txtSearch:
+                Control: TextInput
+                Properties:
+                  Default: =""
+                  HintText: ="Search merchandise"
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  Height: =44
+                  DelayOutput: =true
+                  BorderColor: =clrBorder
+                  RadiusTopLeft: =10
+                  RadiusTopRight: =10
+                  RadiusBottomLeft: =10
+                  RadiusBottomRight: =10
+            - galCategories:
+                Control: Gallery
+                Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                Properties:
+                  Items: |-
+                    =Ungroup(Table({x: ["All"]}, {x: Distinct(Filter(MS_Products, Active = true), Category.Value)}), x)
+                  TemplateSize: =48
+                  TemplatePadding: =4
+                  ShowScrollbar: =false
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  WrapCount: =Max(1, RoundDown(Self.Width / 130, 0))
+                  Height: =100
+                Children:
+                  - btnCategory:
+                      Control: Button
+                      Properties:
+                        Text: =ThisItem.Value
+                        OnSelect: =Set(varCategory, ThisItem.Value)
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =If(varCategory = ThisItem.Value, clrDarkGreen, clrSurface)
+                        Color: =If(varCategory = ThisItem.Value, RGBA(255, 255, 255, 1), clrText)
+                        HoverFill: =ColorFade(If(varCategory = ThisItem.Value, clrDarkGreen, clrSurface), -10%)
+                        PressedFill: =ColorFade(If(varCategory = ThisItem.Value, clrDarkGreen, clrSurface), -20%)
+                        HoverColor: =If(varCategory = ThisItem.Value, RGBA(255, 255, 255, 1), clrText)
+                        BorderColor: =If(varCategory = ThisItem.Value, clrDarkGreen, clrBorder)
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =40
+                        RadiusTopLeft: =20
+                        RadiusTopRight: =20
+                        RadiusBottomLeft: =20
+                        RadiusBottomRight: =20
+                        X: =0
+                        Y: =0
+                        Width: =Parent.TemplateWidth
+            - galProducts:
+                Control: Gallery
+                Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                Properties:
+                  Items: =Sort(Filter(MS_Products, Active = true, varCategory = "All" || Category.Value = varCategory, IsBlank(txtSearch.Text) || txtSearch.Text in Title || txtSearch.Text in Description), Title)
+                  TemplateSize: =300
+                  TemplatePadding: =6
+                  ShowScrollbar: =false
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  WrapCount: =Max(1, RoundDown(Self.Width / 240, 0))
+                  FillPortions: =1
+                  LayoutMinHeight: =300
+                Children:
+                  - rectProduct:
+                      Control: Rectangle
+                      Properties:
+                        Fill: =clrSurface
+                        BorderColor: =clrBorder
+                        BorderThickness: =1
+                        X: =0
+                        Y: =0
+                        Width: =Parent.TemplateWidth
+                        Height: =Parent.TemplateHeight
+                  - imgProduct:
+                      Control: Image
+                      Properties:
+                        Image: =ThisItem.PhotoUrl
+                        ImagePosition: =ImagePosition.Fit
+                        Fill: =clrBg
+                        X: =12
+                        Y: =12
+                        Width: =Parent.TemplateWidth - 24
+                        Height: =120
+                  - lblProductCategory:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.Category.Value
+                        Font: =Font.'Open Sans'
+                        Size: =9
+                        Color: =clrMuted
+                        FontWeight: =FontWeight.Bold
+                        X: =20
+                        Y: =20
+                        Width: =110
+                        Height: =22
+                        Fill: =clrSurface
+                        Align: =Align.Center
+                  - lblProductName:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.Title
+                        Font: =Font.'Open Sans'
+                        Size: =12
+                        Color: =clrText
+                        FontWeight: =FontWeight.Bold
+                        X: =12
+                        Y: =140
+                        Width: =Parent.TemplateWidth - 24
+                        Height: =24
+                  - lblProductDesc:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.Description
+                        Font: =Font.'Open Sans'
+                        Size: =10
+                        Color: =clrMuted
+                        FontWeight: =FontWeight.Normal
+                        X: =12
+                        Y: =164
+                        Width: =Parent.TemplateWidth - 24
+                        Height: =40
+                        VerticalAlign: =VerticalAlign.Top
+                  - lblProductDot:
+                      Control: Label
+                      Properties:
+                        Text: ="●"
+                        Font: =Font.'Open Sans'
+                        Size: =12
+                        Color: =clrGreen
+                        FontWeight: =FontWeight.Normal
+                        X: =12
+                        Y: =208
+                        Width: =18
+                        Height: =28
+                  - lblProductPrice:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.Price
+                        Font: =Font.'Open Sans'
+                        Size: =15
+                        Color: =clrText
+                        FontWeight: =FontWeight.Bold
+                        X: =30
+                        Y: =208
+                        Width: =90
+                        Height: =28
+                  - lblProductStock:
+                      Control: Label
+                      Properties:
+                        Text: =If(ThisItem.Stock <= 0, "Out of stock", ThisItem.Stock & " in stock")
+                        Font: =Font.'Open Sans'
+                        Size: =9
+                        Color: =If(ThisItem.Stock <= 5, clrDanger, clrMuted)
+                        FontWeight: =FontWeight.Normal
+                        X: =Parent.TemplateWidth - 132
+                        Y: =208
+                        Width: =120
+                        Height: =28
+                        Align: =Align.Right
+                  - btnAddToCart:
+                      Control: Button
+                      Properties:
+                        Text: =If(ThisItem.Stock <= 0, "Out of stock", ThisItem.Stock - Sum(Filter(colCart, ProductID = ThisItem.ID), Qty) <= 0, "All in your cart", ThisItem.Price > fxBalance - Sum(colCart, Price * Qty), "Need " & (ThisItem.Price - (fxBalance - Sum(colCart, Price * Qty))) & " more tokens", "Add to cart")
+                        OnSelect: |-
+                          =If(IsBlank(LookUp(colCart, ProductID = ThisItem.ID)),
+                              Collect(colCart, {ProductID: ThisItem.ID, Title: ThisItem.Title, Price: ThisItem.Price, Qty: 1}),
+                              Patch(colCart, LookUp(colCart, ProductID = ThisItem.ID), {Qty: LookUp(colCart, ProductID = ThisItem.ID).Qty + 1})
+                          );
+                          Notify(ThisItem.Title & " added to your cart", NotificationType.Success, 2000)
+                        Font: =Font.'Open Sans'
+                        Size: =11
+                        FontWeight: =FontWeight.Semibold
+                        Fill: =clrDarkGreen
+                        Color: =RGBA(255, 255, 255, 1)
+                        HoverFill: =ColorFade(clrDarkGreen, -10%)
+                        PressedFill: =ColorFade(clrDarkGreen, -20%)
+                        HoverColor: =RGBA(255, 255, 255, 1)
+                        BorderColor: =clrDarkGreen
+                        BorderThickness: =1
+                        DisabledFill: =clrBg
+                        DisabledColor: =clrMuted
+                        DisabledBorderColor: =clrBorder
+                        Height: =40
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        DisplayMode: =If(ThisItem.Stock - Sum(Filter(colCart, ProductID = ThisItem.ID), Qty) <= 0 || ThisItem.Price > fxBalance - Sum(colCart, Price * Qty), DisplayMode.Disabled, DisplayMode.Edit)
+                        X: =12
+                        Y: =244
+                        Width: =Parent.TemplateWidth - 24
+      - conNavShop:
+          Control: GroupContainer
+          Variant: horizontalAutoLayoutContainer
+          Properties:
+            LayoutMode: =LayoutMode.Auto
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =0
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            DropShadow: =DropShadow.None
+            Fill: =clrSurface
+            Height: =56
+            BorderColor: =clrBorder
+            BorderThickness: =1
+          Children:
+            - btnNavShopShop:
+                Control: Button
+                Properties:
+                  Text: ="Shop"
+                  OnSelect: =Navigate(scrShop, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrShop, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrShop, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrShop, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrShop, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavOrdersShop:
+                Control: Button
+                Properties:
+                  Text: ="My orders"
+                  OnSelect: =Navigate(scrOrders, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrOrders, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrOrders, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrOrders, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrOrders, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavWalletShop:
+                Control: Button
+                Properties:
+                  Text: ="Wallet"
+                  OnSelect: =Navigate(scrWallet, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrWallet, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrWallet, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrWallet, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrWallet, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavHelpShop:
+                Control: Button
+                Properties:
+                  Text: ="Help"
+                  OnSelect: =Navigate(scrHelp, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrHelp, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrHelp, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrHelp, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrHelp, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+            - btnNavCheckinShop:
+                Control: Button
+                Properties:
+                  Text: ="Check-in"
+                  OnSelect: =Navigate(scrCheckin, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrCheckin, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrCheckin, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrCheckin, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrCheckin, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+                  Visible: =fxIsAdmin
+            - btnNavAdminShop:
+                Control: Button
+                Properties:
+                  Text: ="Admin"
+                  OnSelect: =Navigate(scrAdmin, ScreenTransition.None)
+                  Font: =Font.'Open Sans'
+                  Size: =11
+                  FontWeight: =If(App.ActiveScreen = scrAdmin, FontWeight.Bold, FontWeight.Semibold)
+                  Fill: =If(App.ActiveScreen = scrAdmin, clrSoftGreen, clrSurface)
+                  Color: =If(App.ActiveScreen = scrAdmin, clrDarkGreen, clrMuted)
+                  HoverFill: =ColorFade(clrSurface, -10%)
+                  PressedFill: =ColorFade(clrSurface, -20%)
+                  HoverColor: =If(App.ActiveScreen = scrAdmin, clrDarkGreen, clrMuted)
+                  BorderColor: =clrSurface
+                  BorderThickness: =0
+                  DisabledFill: =clrBg
+                  DisabledColor: =clrMuted
+                  DisabledBorderColor: =clrBorder
+                  Height: =56
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  FillPortions: =1
+                  Visible: =fxIsAdmin
