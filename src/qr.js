@@ -27,14 +27,14 @@ function parseCode(input) {
 
 // What the QR code contains: a link that opens the check-in screen for this order,
 // so a phone's ordinary camera app works as a scanner for admins.
-function checkinUrl(code) {
-  return `${settings.appUrl}/#checkin/${code}`;
+function checkinUrl(code, baseUrl = settings.appUrl) {
+  return `${baseUrl}/#checkin/${code}`;
 }
 
 const QR_OPTIONS = { errorCorrectionLevel: 'M', margin: 2 };
 
-function svg(code) {
-  return QRCode.toString(checkinUrl(code), { ...QR_OPTIONS, type: 'svg' });
+function svg(code, baseUrl) {
+  return QRCode.toString(checkinUrl(code, baseUrl), { ...QR_OPTIONS, type: 'svg' });
 }
 
 function png(code) {

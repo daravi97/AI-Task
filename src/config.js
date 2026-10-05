@@ -4,7 +4,9 @@
 const settings = {
   timezone: process.env.APP_TIMEZONE || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   reminderHour: Number(process.env.REMINDER_HOUR ?? 9),
-  appUrl: (process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, ''),
+  // RENDER_EXTERNAL_URL is set automatically when hosted on Render.
+  appUrl: (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, ''),
+  appUrlFixed: Boolean(process.env.APP_URL || process.env.RENDER_EXTERNAL_URL),
   companyName: process.env.COMPANY_NAME || 'Company',
 };
 

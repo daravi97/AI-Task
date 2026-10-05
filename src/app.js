@@ -14,6 +14,8 @@ const { version: VERSION } = require('../package.json');
 // `email` is { mode: 'smtp' | 'log', kick() }: kick() asks the outbox worker to send queued emails now.
 function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
   const app = express();
+  // Behind a tunnel or host (Cloudflare, Render…) the original https address arrives in X-Forwarded-* headers.
+  app.set('trust proxy', true);
   app.use(express.json({ limit: '2mb' })); // large enough for a bulk product CSV
   app.use(express.static(path.join(__dirname, '..', 'public')));
   // QR decoder for the check-in camera scanner (served locally, no CDN needed).
@@ -81,7 +83,10 @@ function createApp({ db, assistant, email = { mode: 'log', kick() {} } }) {
     if (!order || (order.user_id !== req.user.id && req.user.role !== 'admin') || !order.pickup_code) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    res.type('image/svg+xml').set('Cache-Control', 'private, max-age=3600').send(await qr.svg(order.pickup_code));
+    // Without a configured APP_URL, point the QR at the address this page was opened from
+    // (e.g. a phone on the same Wi-Fi or through a tunnel), so scanning it works.
+    const base = config.settings.appUrlFixed ? undefined : `${req.protocol}://${req.get('host')}`;
+    res.type('image/svg+xml').set('Cache-Control', 'private, max-age=3600').send(await qr.svg(order.pickup_code, base));
   });
   api.get('/faqs', requireUser, (_req, res) => res.json(store.listFaqs(db)));
   api.post('/chat', requireUser, async (req, res) => {

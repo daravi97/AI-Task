@@ -1,6 +1,6 @@
 {
   "name": "token-merch-store",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Company merchandise store where staff spend appreciation tokens, with a built-in FAQ assistant bot.",
   "main": "server.js",
   "type": "commonjs",
@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
     "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
-    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\"",
+    "phone": "node --disable-warning=ExperimentalWarning scripts/phone.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

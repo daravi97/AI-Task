@@ -61,6 +61,18 @@ npm start                 # opens http://localhost:3000 in your browser
 
 `npm start` opens the site in your default browser (set `OPEN_BROWSER=false` in `.env` to stop that). If port 3000 is busy it uses the next free port and prints the address. Press `Ctrl+C` to stop the server.
 
+### Try it on your phone
+
+Run **`npm run phone`** (on Windows, double-click **`phone.bat`**). It starts the store plus a free [Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/), then shows a QR code in the window. Scan it with your phone to open the store from anywhere, over HTTPS, so the camera scanner on the Check-in page works too.
+
+- Install `cloudflared` once first: `winget install --id Cloudflare.cloudflared` (Windows) or `brew install cloudflared` (Mac). No account is needed.
+- Without `cloudflared`, or if the network blocks it, phone mode falls back to your Wi-Fi address. The phone must then be on the same Wi-Fi, and the in-page camera won't work (no HTTPS), but your phone's own camera app can still scan order QR codes.
+- The tunnel address changes every time, and anyone who has it can open the store. Use it for trying things out with demo data only, and press Ctrl+C when you're done.
+
+### Free hosting for a demo (Render)
+
+`render.yaml` lets you put a demo online on [Render's free plan](https://render.com/docs/free): in Render choose **New → Blueprint** and pick this GitHub repo. Limits of the free plan: it sleeps after 15 minutes without visitors (the first visit then takes about a minute), and it has **no persistent disk**, so orders and changes reset to the demo data whenever it restarts. Fine for showing people, not for real use. Real use needs a proper database (PostgreSQL or SQL Server) or a paid disk, or hosting on a company server or Azure.
+
 On first run the database is created at `./data/store.db` and seeded with demo data:
 
 | Role  | Email               | Password      | Tokens |

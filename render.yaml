@@ -1,0 +1,20 @@
+# One-click demo hosting on Render's free plan: https://render.com (New → Blueprint → pick this repo).
+# Note: the free plan has no persistent disk, so the demo data resets whenever the service
+# restarts or sleeps (after ~15 minutes without visitors). Fine for demos, not for real use.
+services:
+  - type: web
+    name: merch-store
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/version
+    envVars:
+      - key: OPEN_BROWSER
+        value: "false"
+      - key: DB_PATH
+        value: ./data/store.db
+      - key: APP_TIMEZONE
+        value: Asia/Kuala_Lumpur
+      - key: COMPANY_NAME
+        value: Company
